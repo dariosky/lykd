@@ -1,0 +1,34 @@
+"""Common database utilities and base models"""
+
+import datetime
+
+import sqlmodel
+from pydantic import BaseModel, ConfigDict
+from pydantic.alias_generators import to_camel
+from sqlmodel import create_engine, SQLModel, Session, Field
+from typing import Generator
+
+from settings import DATABASE_URL
+
+# Create engine
+engine = create_engine(DATABASE_URL, echo=True)
+
+
+class CamelModel(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+
+class LoggedModel(sqlmodel.SQLModel, CamelModel):
+    updated_at: datetime.datetime = Field(default=None, nullable=True)
+    updated_by: str = Field(default=None, nullable=True)
+
+
+def create_db_and_tables():
+    """Create database tables"""
+    SQLModel.metadata.create_all(engine)
+
+
+def get_session() -> Generator[Session, None, None]:
+    """Get database session"""
+    with Session(engine, expire_on_commit=False) as session:
+        yield session
