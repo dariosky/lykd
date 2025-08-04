@@ -58,7 +58,7 @@ function App() {
   return (
     <div className="App">
       <header className="header">
-        <h1>LYKD</h1>
+        <img src="/lykd.svg" alt="LYKD" className="logo" />
         <p className="tagline">your likes made social</p>
       </header>
 

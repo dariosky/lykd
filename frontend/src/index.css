@@ -181,3 +181,7 @@ h1 {
     gap: 0.5rem;
   }
 }
+
+h2 {
+  margin: 0 0 2rem;
+}
