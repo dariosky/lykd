@@ -2,10 +2,12 @@ import logging
 import os
 import tomllib
 from pathlib import Path
-from fastapi import FastAPI, Query, Depends
+from fastapi import FastAPI, Query, Depends, Request
 from fastapi.responses import RedirectResponse
 from sqlmodel import Session
+from starlette.middleware.sessions import SessionMiddleware
 
+import settings
 # Import models and services
 from models import User, get_session
 from services import SpotifyOAuth
@@ -44,6 +46,19 @@ def update_database():  # pragma: no cover
         logger.exception(f"Cannot run DB migrations: {e}")
 
 
+def get_current_user_id(request: Request) -> str | None:
+    """Get the current user ID from session"""
+    return request.session.get("user_id")
+
+
+def get_current_user(request: Request, session: Session = Depends(get_session)) -> User | None:
+    """Get the current user from session"""
+    user_id = get_current_user_id(request)
+    if not user_id:
+        return None
+    return session.query(User).filter(User.id == user_id).first()
+
+
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application"""
     update_database()
@@ -53,10 +68,39 @@ def create_app() -> FastAPI:
         version=get_version(),
     )
 
+    # Add session middleware
+    app.add_middleware(
+        SessionMiddleware,
+        secret_key=settings.SESSION_SECRET_KEY,
+    )
+
     @app.get("/")
     async def index():
         """Index endpoint returning version and status"""
         return {"version": get_version(), "status": "ok"}
+
+    @app.get("/user/me")
+    async def get_current_user_info(current_user: User | None = Depends(get_current_user)):
+        """Get current user information"""
+        if not current_user:
+            return {"user": None}
+
+        return {
+            "user": {
+                "id": current_user.id,
+                "name": current_user.name,
+                "email": current_user.email,
+                "picture": current_user.picture,
+                "join_date": current_user.join_date.isoformat(),
+                "is_admin": current_user.is_admin,
+            }
+        }
+
+    @app.post("/logout")
+    async def logout(request: Request):
+        """Logout user by clearing session"""
+        request.session.clear()
+        return {"message": "Logged out successfully"}
 
     @app.get("/spotify/authorize")
     async def spotify_authorize():
@@ -67,6 +111,7 @@ def create_app() -> FastAPI:
 
     @app.get("/spotify/callback")
     async def spotify_callback(
+        request: Request,
         code: str = Query(..., description="Authorization code from Spotify"),
         state: str = Query(..., description="State parameter for security"),
         error: str = Query(None, description="Error from Spotify OAuth"),
@@ -127,6 +172,9 @@ def create_app() -> FastAPI:
 
             session.commit()
             session.refresh(user)
+
+            # Store user ID in session
+            request.session["user_id"] = user.id
 
             # Redirect to frontend with success
             return RedirectResponse(

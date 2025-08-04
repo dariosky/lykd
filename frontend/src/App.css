@@ -4,6 +4,158 @@
     flex-direction: column;
 }
 
+.user-header {
+    background: rgba(0, 0, 0, 0.3);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 1rem;
+}
+
+.user-header-content {
+    display: flex;
+    justify-content: flex-end;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.user-dropdown-container {
+    position: relative;
+}
+
+.user-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 25px;
+    padding: 0.5rem 1rem;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.user-button:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.user-avatar-small {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.user-name-header {
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.dropdown-arrow {
+    transition: transform 0.2s ease;
+    color: #888;
+}
+
+.dropdown-arrow.open {
+    transform: rotate(180deg);
+}
+
+.user-dropdown {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    background: rgba(20, 20, 20, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 0.5rem 0;
+    min-width: 200px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+}
+
+.dropdown-user-info {
+    padding: 0.75rem 1rem;
+}
+
+.dropdown-email {
+    color: #888;
+    font-size: 0.8rem;
+}
+
+.dropdown-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 0.5rem 0;
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: none;
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    font-size: 0.9rem;
+}
+
+.dropdown-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.dropdown-item.logout {
+    color: #ff6b6b;
+}
+
+.dropdown-item.logout:hover {
+    background: rgba(255, 107, 107, 0.1);
+}
+
+.dropdown-item:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.dropdown-item svg {
+    flex-shrink: 0;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.user-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.user-name {
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.user-email {
+    color: #888;
+    font-size: 0.8rem;
+}
+
 .header {
     padding: 2rem 1rem 1rem;
     text-align: center;
@@ -70,6 +222,19 @@
     background: #666;
     cursor: not-allowed;
     transform: none;
+}
+
+.spotify-connected {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(29, 185, 84, 0.2);
+    color: #1db954;
+    border: 1px solid #1db954;
+    padding: 0.75rem 1.5rem;
+    border-radius: 50px;
+    font-weight: 600;
+    font-size: 1rem;
 }
 
 .footer {

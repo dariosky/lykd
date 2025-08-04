@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import Layout from './Layout'
 import './ErrorPage.css'
 
 interface ErrorPageProps {
@@ -137,29 +138,30 @@ function ErrorPage({ onGoHome, errorType = 'generic', customTitle, customMessage
   }
 
   return (
-    <div className="error-page">
-      <div className="error-container">
-        <div className="error-icon">
-          {getErrorIcon(errorType)}
-        </div>
+    <Layout>
+      <div className="error-page">
+        <div className="error-container">
+          <div className="error-icon">
+            {getErrorIcon(errorType)}
+          </div>
 
-        <h1 className="error-title">{errorTitle}</h1>
+          <div className="error-content">
+            <h1 className="error-title">{errorTitle}</h1>
+            <p className="error-message">{errorMessage}</p>
 
-        <div className="error-message">
-          <p>{errorMessage}</p>
-        </div>
+            <div className="error-help">
+              {getHelpText(searchParams.get('type') || errorType)}
+            </div>
 
-        <div className="error-actions">
-          <button className="retry-button" onClick={onGoHome}>
-            Try Again
-          </button>
-        </div>
-
-        <div className="error-help">
-          {getHelpText(errorType)}
+            <div className="error-actions">
+              <button onClick={onGoHome} className="home-button">
+                Return to Home
+              </button>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </Layout>
   )
 }
 

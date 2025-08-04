@@ -1,0 +1,120 @@
+.services-page {
+  min-height: 100vh;
+  background: #0a0a0a;
+  color: #fff;
+  padding: 2rem;
+}
+
+.services-header {
+  max-width: 1200px;
+  margin: 0 auto;
+  margin-bottom: 2rem;
+}
+
+.back-link {
+  color: #888;
+  text-decoration: none;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  display: inline-block;
+  transition: color 0.2s ease;
+}
+
+.back-link:hover {
+  color: #fff;
+}
+
+.services-header h1 {
+  color: #fff;
+  font-size: 2rem;
+  margin: 0;
+  font-weight: 600;
+}
+
+.services-content {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.service-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.service-icon {
+  width: 60px;
+  height: 60px;
+  background: #1db954;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  flex-shrink: 0;
+}
+
+.service-info {
+  flex: 1;
+}
+
+.service-info h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.2rem;
+  color: #fff;
+}
+
+.service-status {
+  font-size: 0.9rem;
+  margin: 0 0 0.25rem 0;
+}
+
+.service-status.connected {
+  color: #1db954;
+}
+
+.service-email {
+  color: #888;
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.service-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.status-badge.connected {
+  background: rgba(29, 185, 84, 0.2);
+  color: #1db954;
+  border: 1px solid rgba(29, 185, 84, 0.3);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  background: currentColor;
+  border-radius: 50%;
+}
+
+.loading, .no-user {
+  text-align: center;
+  color: #888;
+  padding: 2rem;
+}
