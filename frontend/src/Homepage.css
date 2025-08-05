@@ -7,12 +7,12 @@
 }
 
 .homepage-header {
-  padding: 3rem 2rem 2rem;
+  padding: 2rem 2rem;
   text-align: center;
 }
 
 .homepage-logo {
-  height: 4rem;
+  height: 10rem;
   width: auto;
   margin-bottom: 1rem;
   filter: brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%)
@@ -52,7 +52,6 @@
 .welcome-description {
   font-size: 1.1rem;
   color: #ccc;
-  max-width: 600px;
   margin: 0 auto;
   line-height: 1.6;
 }
@@ -125,8 +124,11 @@
 
 .features-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
   gap: 2rem;
+  max-width: 800px;
+  margin: 0 auto;
 }
 
 .feature-card {
