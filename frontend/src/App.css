@@ -36,14 +36,30 @@
 .user-header {
   background: rgba(0, 0, 0, 0.3);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 1rem;
+  padding: 0.75rem 1rem;
 }
 
 .user-header-content {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   max-width: 1200px;
   margin: 0 auto;
+}
+
+.header-logo {
+  display: flex;
+  align-items: center;
+}
+
+.logo {
+  height: 48px; /* Smaller logo for compact header */
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.logo:hover {
+  opacity: 0.8;
 }
 
 .user-dropdown-container {
@@ -190,7 +206,7 @@
   text-align: center;
 }
 
-.logo {
+.header .logo {
   height: 4rem;
   width: auto;
   margin-bottom: 0.5rem;
