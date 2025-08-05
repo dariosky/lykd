@@ -86,6 +86,15 @@ function Layout({ children }: LayoutProps) {
       {currentUser && (
         <div className="user-header">
           <div className="user-header-content">
+            <div className="header-logo">
+              <img
+                src="/logo_dark.svg"
+                alt="LYKD"
+                className="logo"
+                onClick={handleHomeClick}
+              />
+              LYKD
+            </div>
             <div className="user-dropdown-container">
               <button
                 className="user-button"
@@ -114,17 +123,6 @@ function Layout({ children }: LayoutProps) {
                     <span className="dropdown-email">{currentUser.email}</span>
                   </div>
                   <div className="dropdown-divider"></div>
-                  <button className="dropdown-item" onClick={handleHomeClick}>
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                    >
-                      <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
-                    </svg>
-                    Home
-                  </button>
                   <button
                     className="dropdown-item"
                     onClick={handleServicesClick}
