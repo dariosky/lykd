@@ -113,7 +113,8 @@
   border-radius: 50%;
 }
 
-.loading, .no-user {
+.loading,
+.no-user {
   text-align: center;
   color: #888;
   padding: 2rem;

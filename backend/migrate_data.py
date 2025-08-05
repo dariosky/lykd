@@ -6,7 +6,6 @@ Handles table name changes: album_artist -> albumartist, track_artist -> trackar
 
 import sqlite3
 import sys
-from pathlib import Path
 
 import settings
 
@@ -78,11 +77,15 @@ def main():
         dest_cursor = dest_conn.cursor()
 
         # Get list of tables from source database
-        source_cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name != 'alembic_version'")
+        source_cursor.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name != 'alembic_version'"
+        )
         source_tables = [row[0] for row in source_cursor.fetchall()]
 
         # Get list of tables from destination database
-        dest_cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name != 'alembic_version'")
+        dest_cursor.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name != 'alembic_version'"
+        )
         dest_tables = [row[0] for row in dest_cursor.fetchall()]
 
         print(f"Source tables: {source_tables}")
@@ -98,7 +101,7 @@ def main():
             "albumartist": "album_artist",  # Source has albumartist
             "trackartist": "track_artist",  # Source has trackartist
             "play": "play",
-            "liked": "liked"
+            "liked": "liked",
         }
 
         # Copy data for each table mapping
@@ -106,7 +109,9 @@ def main():
             if source_table in source_tables and dest_table in dest_tables:
                 copy_table_data(source_cursor, dest_cursor, source_table, dest_table)
             elif source_table in source_tables:
-                print(f"Warning: Source table '{source_table}' exists but destination table '{dest_table}' not found")
+                print(
+                    f"Warning: Source table '{source_table}' exists but destination table '{dest_table}' not found"
+                )
             # Skip if source table doesn't exist (it's expected for some mappings)
 
         # Commit all changes

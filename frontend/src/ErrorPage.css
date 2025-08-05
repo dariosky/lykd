@@ -49,7 +49,7 @@
   border-radius: 8px;
   padding: 1rem;
   color: #fca5a5;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
   font-size: 0.9rem;
   word-break: break-word;
   max-height: 200px;
@@ -64,7 +64,8 @@
   flex-wrap: wrap;
 }
 
-.retry-button, .home-button {
+.retry-button,
+.home-button {
   padding: 0.75rem 1.5rem;
   font-size: 1rem;
   font-weight: 600;
@@ -131,7 +132,8 @@
     align-items: center;
   }
 
-  .retry-button, .home-button {
+  .retry-button,
+  .home-button {
     width: 100%;
     max-width: 200px;
   }
