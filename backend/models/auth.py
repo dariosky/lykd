@@ -12,7 +12,7 @@ class User(SQLModel, CamelModel, table=True):
     id: str = Field(primary_key=True)
     name: str
     email: str = Field(unique=True, index=True)
-    picture: str
+    picture: str | None = None
     tokens: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
     join_date: datetime.datetime = Field(
         default_factory=lambda: datetime.datetime.now(datetime.UTC)

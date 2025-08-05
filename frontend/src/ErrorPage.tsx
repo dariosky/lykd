@@ -75,7 +75,7 @@ function ErrorPage({ onGoHome, errorType = 'generic', customTitle, customMessage
             <p>If this problem persists, please:</p>
             <ul>
               <li>Refresh the page and try again</li>
-              <li>Check your internet connection</li>
+              <li>Check your Internet connection</li>
               <li>Wait a few minutes and retry</li>
               <li>Contact support if the issue continues</li>
             </ul>
@@ -86,7 +86,7 @@ function ErrorPage({ onGoHome, errorType = 'generic', customTitle, customMessage
           <>
             <p>To resolve this issue:</p>
             <ul>
-              <li>Check your internet connection</li>
+              <li>Check your Internet connection</li>
               <li>Try refreshing the page</li>
               <li>Disable any VPN or proxy</li>
               <li>Check if the server is accessible</li>

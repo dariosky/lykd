@@ -25,7 +25,7 @@ class LoggedModel(sqlmodel.SQLModel, CamelModel):
 
 def create_db_and_tables():
     """Create database tables"""
-    SQLModel.metadata.create_all(engine)
+    SQLModel.metadata.create_all(engine, checkfirst=True)
 
 
 def get_session() -> Generator[Session, None, None]:

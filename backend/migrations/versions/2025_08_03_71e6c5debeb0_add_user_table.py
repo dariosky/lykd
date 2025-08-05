@@ -24,7 +24,7 @@ def upgrade() -> None:
         sa.Column("id", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
         sa.Column("name", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
         sa.Column("email", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("picture", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("picture", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
         sa.Column("tokens", sa.JSON(), nullable=True),
         sa.Column("join_date", sa.DateTime(), nullable=False),
         sa.Column("is_admin", sa.Boolean(), nullable=False),

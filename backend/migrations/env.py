@@ -1,8 +1,8 @@
 from alembic import context
 from sqlalchemy import engine_from_config, pool
-from sqlmodel import SQLModel
-
 from models import *  # noqa
+
+from sqlmodel import SQLModel
 
 if hasattr(context, "config"):  # pragma: no cover
     config = context.config

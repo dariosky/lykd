@@ -2,12 +2,16 @@ import logging
 import os
 import tomllib
 from pathlib import Path
+
+from brotli_asgi import BrotliMiddleware
 from fastapi import FastAPI, Query, Depends, Request
 from fastapi.responses import RedirectResponse
 from sqlmodel import Session
+from starlette.middleware import Middleware
 from starlette.middleware.sessions import SessionMiddleware
 
 import settings
+
 # Import models and services
 from models import User, get_session
 from services import SpotifyOAuth
@@ -32,7 +36,7 @@ def update_database():  # pragma: no cover
     import alembic.config
 
     if not Path("alembic.ini").is_file():
-        os.chdir(Path(__file__).parent.parent)
+        os.chdir(settings.BACKEND_DIR)
 
     try:
         alembic.config.main(
@@ -51,7 +55,9 @@ def get_current_user_id(request: Request) -> str | None:
     return request.session.get("user_id")
 
 
-def get_current_user(request: Request, session: Session = Depends(get_session)) -> User | None:
+def get_current_user(
+    request: Request, session: Session = Depends(get_session)
+) -> User | None:
     """Get the current user from session"""
     user_id = get_current_user_id(request)
     if not user_id:
@@ -66,12 +72,13 @@ def create_app() -> FastAPI:
         title="LYKD",
         description="Your likes made social",
         version=get_version(),
-    )
-
-    # Add session middleware
-    app.add_middleware(
-        SessionMiddleware,
-        secret_key=settings.SESSION_SECRET_KEY,
+        middleware=[
+            Middleware(BrotliMiddleware, minimum_size=1000),
+            Middleware(SessionMiddleware, secret_key=settings.SESSION_SECRET_KEY),
+        ],
+        swagger_ui_parameters={
+            "defaultModelsExpandDepth": 0,
+        },  # collapse the swagger schema
     )
 
     @app.get("/")
@@ -80,7 +87,9 @@ def create_app() -> FastAPI:
         return {"version": get_version(), "status": "ok"}
 
     @app.get("/user/me")
-    async def get_current_user_info(current_user: User | None = Depends(get_current_user)):
+    async def get_current_user_info(
+        current_user: User | None = Depends(get_current_user),
+    ):
         """Get current user information"""
         if not current_user:
             return {"user": None}
