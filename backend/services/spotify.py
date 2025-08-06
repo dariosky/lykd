@@ -107,3 +107,61 @@ class SpotifyOAuth:
                 )
 
             return response.json()
+
+    async def get_liked_songs(
+        self, access_token: str, limit: int = 50, offset: int = 0
+    ) -> Dict[str, Any]:
+        """Get user's liked songs from Spotify API"""
+        headers = {"Authorization": f"Bearer {access_token}"}
+
+        params = {
+            "limit": limit,
+            "offset": offset,
+            "market": "from_token",  # Use user's market
+        }
+
+        async with httpx.AsyncClient(verify=False) as client:
+            response = await client.get(
+                "https://api.spotify.com/v1/me/tracks", headers=headers, params=params
+            )
+
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=f"Failed to get liked songs: {response.text}",
+                )
+
+            return response.json()
+
+    async def get_all_liked_songs(self, access_token: str) -> list[Dict[str, Any]]:
+        """Get all liked songs for a user by iterating through all pages"""
+        all_tracks = []
+        limit = 50  # Maximum allowed by Spotify API
+        offset = 0
+
+        while True:
+            try:
+                response = await self.get_liked_songs(access_token, limit, offset)
+                tracks = response.get("items", [])
+
+                if not tracks:
+                    break
+
+                all_tracks.extend(tracks)
+
+                # Check if there are more tracks
+                if len(tracks) < limit:
+                    break
+
+                offset += limit
+
+            except HTTPException as e:
+                if e.status_code == 401:
+                    # Token might be expired, re-raise to handle token refresh
+                    raise
+                else:
+                    # Log other errors but continue
+                    print(f"Error fetching liked songs at offset {offset}: {e.detail}")
+                    break
+
+        return all_tracks
