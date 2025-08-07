@@ -14,13 +14,13 @@ import settings
 
 # Import models and services
 from models import User, get_session
-from services import SpotifyOAuth
+from services import Spotify
 from settings import PROJECT_PATH
 
 logger = logging.getLogger("lykd.main")
 
 # Initialize Spotify OAuth
-spotify_oauth = SpotifyOAuth()
+spotify = Spotify()
 
 
 def get_version() -> str:
@@ -62,7 +62,7 @@ def get_current_user(
     user_id = get_current_user_id(request)
     if not user_id:
         return None
-    return session.query(User).filter(User.id == user_id).first()
+    return session.get(User, user_id)
 
 
 def create_app() -> FastAPI:
@@ -114,7 +114,7 @@ def create_app() -> FastAPI:
     @app.get("/spotify/authorize")
     async def spotify_authorize():
         """Initiate Spotify OAuth flow"""
-        auth_url, state = spotify_oauth.get_authorization_url()
+        auth_url, state = spotify.get_authorization_url()
         # In a real app, you might want to store the state in a session or cache
         return {"authorization_url": auth_url, "state": state}
 
@@ -136,10 +136,10 @@ def create_app() -> FastAPI:
 
         try:
             # Exchange code for token
-            token_data = await spotify_oauth.exchange_code_for_token(code)
+            token_data = await spotify.exchange_code_for_token(code)
 
             # Get user information
-            user_info = await spotify_oauth.get_user_info(token_data["access_token"])
+            user_info = await spotify.get_user_info(token_data["access_token"])
 
             # Save or update user in database
             # Check if user already exists

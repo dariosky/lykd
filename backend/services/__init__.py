@@ -1,5 +1,3 @@
-"""Services package for LYKD backend"""
+from .spotify import Spotify
 
-from .spotify import SpotifyOAuth
-
-__all__ = ["SpotifyOAuth"]
+__all__ = ["Spotify"]

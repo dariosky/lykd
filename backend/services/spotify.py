@@ -1,15 +1,19 @@
-"""Spotify OAuth and API integration"""
+"""Spotify API integration"""
 
 import secrets
 import httpx
-from typing import Dict, Any
+from typing import Dict, Any, TYPE_CHECKING
 from urllib.parse import urlencode
 from fastapi import HTTPException
+from tenacity import retry, stop_after_attempt, retry_if_exception_type
 
 import settings
 
+if TYPE_CHECKING:
+    from models.auth import User
 
-class SpotifyOAuth:
+
+class Spotify:
     """Handle Spotify OAuth flow and API calls"""
 
     def __init__(self):
@@ -29,6 +33,25 @@ class SpotifyOAuth:
 
         if not self.client_id or not self.client_secret:
             raise ValueError("Spotify credentials not found in environment variables")
+
+        # Initialize reusable HTTP client with connection pooling
+        self.client = httpx.AsyncClient(
+            verify=False,  # Remove in production
+            timeout=30.0,
+            limits=httpx.Limits(max_keepalive_connections=5, max_connections=10),
+        )
+
+    async def __aenter__(self):
+        """Async context manager entry"""
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit - close the client"""
+        await self.client.aclose()
+
+    async def close(self):
+        """Explicitly close the HTTP client"""
+        await self.client.aclose()
 
     def get_authorization_url(self) -> tuple[str, str]:
         """Generate authorization URL and state for OAuth flow"""
@@ -58,55 +81,50 @@ class SpotifyOAuth:
             "client_secret": self.client_secret,
         }
 
-        async with httpx.AsyncClient(
-            verify=False
-        ) as client:  # verify=False for self-signed certs, remove in production
-            response = await client.post(token_url, data=data)
+        response = await self.client.post(token_url, data=data)
 
-            if response.status_code != 200:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Failed to exchange code for token: {response.text}",
-                )
+        if response.status_code != 200:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Failed to exchange code for token: {response.text}",
+            )
 
-            return response.json()
+        return response.json()
 
     async def get_user_info(self, access_token: str) -> Dict[str, Any]:
         """Get user information from Spotify API"""
         headers = {"Authorization": f"Bearer {access_token}"}
 
-        async with httpx.AsyncClient(verify=False) as client:
-            response = await client.get(
-                "https://api.spotify.com/v1/me", headers=headers
+        response = await self.client.get(
+            "https://api.spotify.com/v1/me", headers=headers
+        )
+
+        if response.status_code != 200:
+            raise HTTPException(
+                status_code=400, detail=f"Failed to get user info: {response.text}"
             )
 
-            if response.status_code != 200:
-                raise HTTPException(
-                    status_code=400, detail=f"Failed to get user info: {response.text}"
-                )
-
-            return response.json()
+        return response.json()
 
     async def refresh_token(self, refresh_token: str) -> Dict[str, Any]:
         """Refresh access token using refresh token"""
-        token_url = "https://accounts.spotify.com/api/token"
 
-        data = {
-            "grant_type": "refresh_token",
-            "refresh_token": refresh_token,
-            "client_id": self.client_id,
-            "client_secret": self.client_secret,
-        }
+        response = await self.client.post(
+            "https://accounts.spotify.com/api/token",
+            data={
+                "grant_type": "refresh_token",
+                "refresh_token": refresh_token,
+                "client_id": self.client_id,
+                "client_secret": self.client_secret,
+            },
+        )
 
-        async with httpx.AsyncClient(verify=False) as client:
-            response = await client.post(token_url, data=data)
+        if response.status_code != 200:
+            raise HTTPException(
+                status_code=400, detail=f"Failed to refresh token: {response.text}"
+            )
 
-            if response.status_code != 200:
-                raise HTTPException(
-                    status_code=400, detail=f"Failed to refresh token: {response.text}"
-                )
-
-            return response.json()
+        return response.json()
 
     async def get_liked_songs(
         self, access_token: str, limit: int = 50, offset: int = 0
@@ -120,18 +138,17 @@ class SpotifyOAuth:
             "market": "from_token",  # Use user's market
         }
 
-        async with httpx.AsyncClient(verify=False) as client:
-            response = await client.get(
-                "https://api.spotify.com/v1/me/tracks", headers=headers, params=params
+        response = await self.client.get(
+            "https://api.spotify.com/v1/me/tracks", headers=headers, params=params
+        )
+
+        if response.status_code != 200:
+            raise HTTPException(
+                status_code=response.status_code,
+                detail=f"Failed to get liked songs: {response.text}",
             )
 
-            if response.status_code != 200:
-                raise HTTPException(
-                    status_code=response.status_code,
-                    detail=f"Failed to get liked songs: {response.text}",
-                )
-
-            return response.json()
+        return response.json()
 
     async def get_all_liked_songs(self, access_token: str) -> list[Dict[str, Any]]:
         """Get all liked songs for a user by iterating through all pages"""
@@ -165,3 +182,70 @@ class SpotifyOAuth:
                     break
 
         return all_tracks
+
+    async def get_all_liked_songs_for_user(self, user: "User") -> list[Dict[str, Any]]:
+        """Get all liked songs for a user with automatic token refresh handling"""
+
+        @retry(
+            stop=stop_after_attempt(2),
+            retry=retry_if_exception_type(HTTPException),
+        )
+        async def _fetch_with_retry():
+            access_token = user.tokens.get("access_token")
+
+            if not access_token:
+                raise HTTPException(
+                    status_code=400, detail="No access token found for user"
+                )
+
+            try:
+                return await self.get_all_liked_songs(access_token)
+            except HTTPException as e:
+                if e.status_code == 401 or (
+                    e.status_code == 400 and "Refresh token revoked" in e.detail
+                ):
+                    # Try to refresh the token
+                    refresh_token = user.tokens.get("refresh_token")
+                    if not refresh_token:
+                        user.tokens.clear()
+                        raise HTTPException(
+                            status_code=400, detail="No refresh token available"
+                        )
+
+                    try:
+                        token_data = await self.refresh_token(refresh_token)
+
+                        # Update user tokens
+                        user.tokens.update(
+                            {
+                                "access_token": token_data["access_token"],
+                                "expires_in": token_data.get("expires_in"),
+                                "refresh_token": token_data.get(
+                                    "refresh_token", refresh_token
+                                ),
+                            }
+                        )
+
+                        # Retry with new token
+                        return await self.get_all_liked_songs(
+                            token_data["access_token"]
+                        )
+
+                    except HTTPException as refresh_error:
+                        if (
+                            refresh_error.status_code == 400
+                            and "Refresh token revoked" in refresh_error.detail
+                        ):
+                            print(
+                                f"Refresh token revoked for user {user.email}. Clearing tokens."
+                            )
+                            user.tokens.clear()
+                        raise refresh_error
+                else:
+                    raise e
+
+        try:
+            return await _fetch_with_retry()
+        except HTTPException:
+            print(f"Failed to fetch liked songs for user {user.email}")
+            return []
