@@ -2,32 +2,15 @@
 
 import asyncio
 import logging
-from typing import Any, Dict, List
 
 from models.auth import User
 from models.common import get_session
 from services import Spotify
+from services.likes import process_user_likes
 from sqlmodel import select
-
-from utils import time_it, setup_logs
+from utils import setup_logs, time_it
 
 logger = logging.getLogger("lykd.fetch")
-
-
-def process_liked_songs(user: User, liked_songs: List[Dict[str, Any]]) -> None:
-    """Process and optionally store the liked songs data"""
-    print(f"\nProcessing {len(liked_songs)} liked songs for user {user.email}:")
-
-    for i, item in enumerate(liked_songs[:5]):  # Show first 5 as example
-        track = item.get("track", {})
-        artists = ", ".join([artist["name"] for artist in track.get("artists", [])])
-        print(f"  {i + 1}. {track.get('name', 'Unknown')} by {artists}")
-
-    if len(liked_songs) > 5:
-        print(f"  ... and {len(liked_songs) - 5} more songs")
-
-    # TODO: Here you can add code to store the songs in your database
-    # For example, create Track, Artist, Album records and user_liked_songs associations
 
 
 @time_it
@@ -62,24 +45,11 @@ async def fetch_likes():
             f"Processing {len(users_with_tokens)} users with Spotify tokens concurrently..."
         )
 
-        # Create async tasks for all users
-        async def process_user(user: User):
-            """Process a single user and return results"""
-            print(f"Processing user: {user.email}")
-            liked_songs = await spotify_client.get_all(
-                user=user,
-                request=spotify_client.get_liked_page,
-            )
-
-            if liked_songs:
-                process_liked_songs(user, liked_songs)
-                return user.email, len(liked_songs)
-            else:
-                print(f"No liked songs retrieved for user {user.email}")
-                return user.email, 0
-
         # Execute all user processing concurrently
-        tasks = [process_user(user) for user in users_with_tokens]
+        tasks = [
+            process_user_likes(session, user, spotify_client)
+            for user in users_with_tokens
+        ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Process results and handle any exceptions

@@ -62,11 +62,16 @@ async def renew_token_if_expired(retry_state):
                     exception.status_code == 401
                     and "access token expired" in exception.detail
                 ):
-                    user.tokens.update(await spotify.refresh_token(user=user))
+                    updated_tokens = await spotify.refresh_token(user=user)
+                    user.tokens = {
+                        **(user.tokens or {}),
+                        **updated_tokens,
+                    }
                     if spotify.db_session:
                         logger.debug(f"Refreshed the user {user.email} tokens")
                         spotify.db_session.add(user)
                         spotify.db_session.commit()
+                    return  # token refreshed - let's retry
                 elif (
                     exception.status_code == 400
                     and "Refresh token revoked" in exception.detail
@@ -81,11 +86,7 @@ async def renew_token_if_expired(retry_state):
                     fut.set_result(None)
                     retry_state.outcome = fut  # replace the finished future
                     raise exception
-            if (
-                exception.status_code >= 400
-                and exception.status_code < 500
-                and exception.status_code != 429
-            ):
+            if 400 <= exception.status_code < 500 and exception.status_code != 429:
                 # don't retry on 4xx errors but 429
                 raise exception
 
@@ -204,30 +205,51 @@ class Spotify:
 
         return response.json()
 
-    @spotify_retry()
-    async def get_liked_page(
-        self, *, user: "User", limit: int = 50, offset: int = 0
-    ) -> Dict[str, Any]:
-        """Get user's liked songs from Spotify API"""
+    def get_headers(self, user: User):
         access_token = user.get_access_token()
-        headers = {"Authorization": f"Bearer {access_token}"}
+        return {"Authorization": f"Bearer {access_token}"}
 
-        params = {
-            "offset": offset,
-            "limit": limit,
-        }
-        logger.debug(f"Fetching liked page for {user.email} - {offset}...")
+    @spotify_retry()
+    async def get_page(
+        self, *, url: str, user: "User", limit: int = 50, offset: int = 0
+    ) -> Dict[str, Any]:
+        """Get a page given an endpoint in the Spotify API"""
+
+        params = {"offset": offset, "limit": limit}
 
         response = await self.client.get(
-            "https://api.spotify.com/v1/me/tracks", headers=headers, params=params
+            url, headers=self.get_headers(user), params=params
         )
 
         if response.status_code != 200:
-            raise exception_from_response(response, "Failed to get liked songs")
+            raise exception_from_response(response, f"Request to {url} failed")
 
         return response.json()
 
-    async def get_all(self, *, user: User, request, limit=50) -> list[Dict[str, Any]]:
+    async def get_liked_page(
+        self, *, user: "User", limit: int = 50, offset: int = 0
+    ) -> Dict[str, Any]:
+        logger.debug(f"Fetching liked page for {user.email} - {offset}...")
+        return await self.get_page(
+            url="https://api.spotify.com/v1/me/tracks",
+            user=user,
+            limit=limit,
+            offset=offset,
+        )
+
+    async def get_playlists_page(
+        self, *, user: "User", limit: int = 50, offset: int = 0
+    ) -> Dict[str, Any]:
+        logger.debug(f"Fetching playlists page for {user.email} - {offset}...")
+        return await self.get_page(
+            url="https://api.spotify.com/v1/me/playlists",
+            user=user,
+            limit=limit,
+            offset=offset,
+        )
+
+    @staticmethod
+    async def get_all(*, user: User, request, limit=50) -> list[Dict[str, Any]]:
         """Get all liked songs for a user by iterating through all pages"""
         items = []
         offset = 0
@@ -249,3 +271,62 @@ class Spotify:
             offset += limit
 
         return items
+
+    @spotify_retry()
+    async def get_or_create_playlist(self, user: User, playlist_name: str):
+        playlists = await self.get_all_playlists(user)
+        same_name_playlists = [
+            p
+            for p in playlists
+            if p["name"] == playlist_name and p["owner"]["id"] == user.id
+        ]
+
+        if not same_name_playlists:
+            playlist = await self.playlist_create(
+                user,
+                description="All the songs you like - synced by Lykd",
+                name=playlist_name,
+                public=False,
+            )
+        else:
+            playlist = same_name_playlists[-1]  # getting the last
+            if len(same_name_playlists) > 1:
+                for duplicated_playlist in same_name_playlists[:-1]:
+                    logger.debug(f"Removing duplicated {duplicated_playlist['id']}")
+                    await self.delete_playlist(user, duplicated_playlist["id"])
+
+        return playlist
+
+    async def get_all_playlists(self, user: User):
+        return await self.get_all(user=user, request=self.get_playlists_page)
+
+    @spotify_retry()
+    async def playlist_create(
+        self, user: User, description: str | None, name: str, public: bool
+    ):
+        logger.info(f"Creating playlist {name} for {user}")
+        params = {"name": name, "description": description, public: public}
+        url = f"https://api.spotify.com/v1/users/{user.id}/playlists"
+        response = await self.client.post(
+            url,
+            headers=self.get_headers(user),
+            json=params,
+        )
+
+        if response.status_code != 201:
+            raise exception_from_response(response, f"Request to {url} failed")
+
+        return response.json()
+
+    async def delete_playlist(self, user, playlist_id: str):
+        logger.info(f"Deleting playlist {playlist_id} for {user}")
+        url = f"https://api.spotify.com/v1/playlists/{playlist_id}/followers"
+        response = await self.client.delete(
+            url,
+            headers=self.get_headers(user),
+        )
+
+        if response.status_code != 200:
+            raise exception_from_response(response, f"Delete {url} failed")
+
+        return response.json()

@@ -1,13 +1,14 @@
 import datetime
 from datetime import timezone
 from enum import Enum
+from typing import List
 
-from models import CamelModel
-from sqlmodel import Field, SQLModel
+from models.common import CamelModel
+from sqlmodel import Field, SQLModel, Relationship
 
 
 class Artist(SQLModel, CamelModel, table=True):
-    __tablename__ = "artist"
+    __tablename__ = "artists"
 
     id: str = Field(primary_key=True)
     name: str
@@ -21,7 +22,7 @@ class DatePrecision(str, Enum):
 
 
 class Album(SQLModel, CamelModel, table=True):
-    __tablename__ = "album"
+    __tablename__ = "albums"
 
     id: str = Field(primary_key=True)
     name: str
@@ -31,43 +32,79 @@ class Album(SQLModel, CamelModel, table=True):
 
 
 class TrackArtist(SQLModel, CamelModel, table=True):
-    __tablename__ = "track_artist"
+    __tablename__ = "artists_tracks"
 
-    track_id: str = Field(primary_key=True, foreign_key="track.id")
-    artist_id: str = Field(primary_key=True, foreign_key="artist.id")
+    track_id: str = Field(primary_key=True, foreign_key="tracks.id")
+    artist_id: str = Field(primary_key=True, foreign_key="artists.id")
 
 
 class Track(SQLModel, CamelModel, table=True):
-    __tablename__ = "track"
+    __tablename__ = "tracks"
 
     id: str = Field(primary_key=True)
     title: str
     duration: int
-    album_id: str | None = Field(default=None, foreign_key="album.id")
+    album_id: str | None = Field(default=None, foreign_key="albums.id")
+
+    # Relationship to playlists through PlaylistTrack
+    playlist_tracks: List["PlaylistTrack"] = Relationship(back_populates="track")
 
 
 class AlbumArtist(SQLModel, CamelModel, table=True):
-    __tablename__ = "album_artist"
+    __tablename__ = "albums_artists"
 
-    album_id: str = Field(primary_key=True, foreign_key="album.id")
-    artist_id: str = Field(primary_key=True, foreign_key="artist.id")
+    album_id: str = Field(primary_key=True, foreign_key="albums.id")
+    artist_id: str = Field(primary_key=True, foreign_key="artists.id")
 
 
 class Play(SQLModel, CamelModel, table=True):
-    __tablename__ = "play"
+    __tablename__ = "plays"
 
-    user_id: str = Field(primary_key=True, foreign_key="user.id")
-    track_id: str = Field(primary_key=True, foreign_key="track.id")
+    user_id: str = Field(primary_key=True, foreign_key="users.id")
+    track_id: str = Field(primary_key=True, foreign_key="tracks.id")
     date: datetime.datetime = Field(
         default_factory=lambda: datetime.datetime.now(timezone.utc), primary_key=True
     )
 
 
-class Liked(SQLModel, CamelModel, table=True):
-    __tablename__ = "liked"
+class Like(SQLModel, CamelModel, table=True):
+    __tablename__ = "likes"
 
-    user_id: str = Field(primary_key=True, foreign_key="user.id")
-    track_id: str = Field(primary_key=True, foreign_key="track.id")
+    user_id: str = Field(primary_key=True, foreign_key="users.id")
+    track_id: str = Field(primary_key=True, foreign_key="tracks.id")
     date: datetime.datetime = Field(
         default_factory=lambda: datetime.datetime.now(timezone.utc), primary_key=True
     )
+
+
+class PlaylistTrack(SQLModel, CamelModel, table=True):
+    __tablename__ = "playlists_tracks"
+
+    playlist_id: str = Field(primary_key=True, foreign_key="playlists.id")
+    track_id: str = Field(primary_key=True, foreign_key="tracks.id")
+    date: datetime.datetime = Field(
+        default_factory=lambda: datetime.datetime.now(timezone.utc)
+    )
+
+    # Relationships
+    playlist: "Playlist" = Relationship(back_populates="playlist_tracks")
+    track: "Track" = Relationship(back_populates="playlist_tracks")
+
+
+class Playlist(SQLModel, CamelModel, table=True):
+    __tablename__ = "playlists"
+
+    id: str = Field(primary_key=True)
+    name: str
+    description: str | None = None
+    picture: str | None = None
+    owner_id: str = Field(foreign_key="users.id")
+    is_public: bool = True
+
+    # Relationship to get tracks through PlaylistTrack
+    playlist_tracks: List["PlaylistTrack"] = Relationship(back_populates="playlist")
+
+    @property
+    def tracks(self) -> List["Track"]:
+        """Get all tracks in this playlist"""
+        return [pt.track for pt in self.playlist_tracks]

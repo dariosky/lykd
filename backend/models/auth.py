@@ -7,7 +7,7 @@ from .common import CamelModel
 
 
 class User(SQLModel, CamelModel, table=True):
-    __tablename__ = "user"
+    __tablename__ = "users"
 
     id: str = Field(primary_key=True)
     name: str
@@ -24,3 +24,6 @@ class User(SQLModel, CamelModel, table=True):
 
     def get_refresh_token(self) -> str:
         return self.tokens.get("refresh_token") if self.tokens else None
+
+    def __str__(self):
+        return self.email

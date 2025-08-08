@@ -2,18 +2,29 @@
 
 from .common import get_session, CamelModel
 from .auth import User
-from .music import Artist, Track, TrackArtist, AlbumArtist, Liked, Play, Album
+from .music import (
+    Album,
+    AlbumArtist,
+    Artist,
+    Like,
+    Play,
+    Playlist,
+    PlaylistTrack,
+    Track,
+    TrackArtist,
+)
 
 __all__ = [
-    "User",
+    "Album",
+    "AlbumArtist",
     "Artist",
+    "Like",
+    "Play",
+    "Playlist",
+    "PlaylistTrack",
     "Track",
     "TrackArtist",
-    "Album",
-    "Play",
-    "Liked",
-    "AlbumArtist",
-    "AlbumArtist",
+    "User",
     "get_session",
     "CamelModel",
 ]

@@ -3,7 +3,7 @@
 import pytest
 import datetime
 from models.auth import User
-from models.music import Artist, Track, Album, Liked, Play
+from models.music import Artist, Track, Album, Play, Like
 
 
 class TestUserModel:
@@ -122,7 +122,7 @@ class TestMusicModels:
         test_session.merge(track)
         test_session.commit()
 
-        liked = Liked(user_id=test_user.id, track_id=track.id)
+        liked = Like(user_id=test_user.id, track_id=track.id)
         test_session.add(liked)
         test_session.commit()
         test_session.refresh(liked)

@@ -94,14 +94,14 @@ def main():
 
         # Define table mappings (source -> destination)
         table_mappings = {
-            "user": "user",
-            "artist": "artist",
-            "album": "album",
-            "track": "track",
-            "albumartist": "album_artist",  # Source has albumartist
-            "trackartist": "track_artist",  # Source has trackartist
-            "play": "play",
-            "liked": "liked",
+            "user": "users",
+            "artist": "artists",
+            "album": "albums",
+            "track": "tracks",
+            "albumartist": "albums_artists",  # Source has albumartist
+            "trackartist": "tracks_artists",  # Source has trackartist
+            "play": "plays",
+            "liked": "likes",
         }
 
         # Copy data for each table mapping
