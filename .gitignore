@@ -1,1 +1,6 @@
 /.idea/copilotDiffState.xml
+
+# coverage
+.coverage
+coverage.xml
+/htmlcov

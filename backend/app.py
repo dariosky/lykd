@@ -121,9 +121,9 @@ def create_app() -> FastAPI:
     @app.get("/spotify/callback")
     async def spotify_callback(
         request: Request,
-        code: str = Query(..., description="Authorization code from Spotify"),
-        state: str = Query(..., description="State parameter for security"),
-        error: str = Query(None, description="Error from Spotify OAuth"),
+        code: str | None = Query(None, description="Authorization code from Spotify"),
+        state: str | None = Query(..., description="State parameter for security"),
+        error: str | None = Query(None, description="Error from Spotify OAuth"),
         session: Session = Depends(get_session),
     ):
         """Handle Spotify OAuth callback"""

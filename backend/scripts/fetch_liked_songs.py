@@ -9,16 +9,9 @@ from models.common import get_session
 from services import Spotify
 from sqlmodel import select
 
-from utils import time_it
+from utils import time_it, setup_logs
 
 logger = logging.getLogger("lykd.fetch")
-
-
-async def fetch_user_liked_songs(
-    spotify_client: Spotify, user: User
-) -> List[Dict[str, Any]]:
-    """Fetch all liked songs for a specific user"""
-    return await spotify_client.get_all_liked_songs_for_user(user)
 
 
 def process_liked_songs(user: User, liked_songs: List[Dict[str, Any]]) -> None:
@@ -42,17 +35,12 @@ async def fetch_likes():
     """Main function to fetch liked songs for all users"""
     print("Starting to fetch liked songs for all users...")
 
-    # Initialize Spotify client
-    try:
-        spotify_client = Spotify()
-    except ValueError as e:
-        print(f"Failed to initialize Spotify client: {e}")
-        return
-
     # Get database session and fetch all users
     session = next(get_session())
+    spotify_client = None
 
     try:
+        spotify_client = Spotify(db_session=session)
         users = session.exec(select(User)).all()
 
         print(f"Found {len(users)} users in the database")
@@ -78,7 +66,10 @@ async def fetch_likes():
         async def process_user(user: User):
             """Process a single user and return results"""
             print(f"Processing user: {user.email}")
-            liked_songs = await fetch_user_liked_songs(spotify_client, user)
+            liked_songs = await spotify_client.get_all(
+                user=user,
+                request=spotify_client.get_liked_page,
+            )
 
             if liked_songs:
                 process_liked_songs(user, liked_songs)
@@ -97,7 +88,9 @@ async def fetch_likes():
 
         for i, result in enumerate(results):
             if isinstance(result, Exception):
-                print(f"Error processing user {users_with_tokens[i].email}: {result}")
+                logger.error(
+                    f"Error processing user {users_with_tokens[i].email}: {result}"
+                )
             else:
                 user_email, song_count = result
                 total_songs += song_count
@@ -114,14 +107,20 @@ async def fetch_likes():
 
     except Exception as e:
         print(f"Error during execution: {e}")
-        session.rollback()
+        if session:
+            session.rollback()
+        raise
     finally:
-        session.close()
-        # Close the Spotify client to free resources
-        await spotify_client.close()
+        # Close the Spotify client to free HTTP connections
+        if spotify_client:
+            await spotify_client.close()
+        # Properly close the database session
+        if session:
+            session.close()
 
     print("\nFinished processing all users.")
 
 
 if __name__ == "__main__":
+    setup_logs()
     asyncio.run(fetch_likes())

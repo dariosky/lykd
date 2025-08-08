@@ -5,13 +5,15 @@ import datetime
 import sqlmodel
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
-from sqlmodel import create_engine, SQLModel, Session, Field
+from sqlmodel import create_engine, Session, Field
 from typing import Generator
 
-from settings import DATABASE_URL
 
 # Create engine
-engine = create_engine(DATABASE_URL, echo=True)
+def get_engine():  # pragma: no cover
+    from settings import DATABASE_URL
+
+    return create_engine(DATABASE_URL)
 
 
 class CamelModel(BaseModel):
@@ -23,12 +25,7 @@ class LoggedModel(sqlmodel.SQLModel, CamelModel):
     updated_by: str = Field(default=None, nullable=True)
 
 
-def create_db_and_tables():
-    """Create database tables"""
-    SQLModel.metadata.create_all(engine, checkfirst=True)
-
-
-def get_session() -> Generator[Session, None, None]:
+def get_session() -> Generator[Session, None, None]:  # pragma: no cover
     """Get database session"""
-    with Session(engine, expire_on_commit=False) as session:
+    with Session(get_engine(), expire_on_commit=False) as session:
         yield session
