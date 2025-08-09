@@ -1,8 +1,8 @@
 import datetime
 
-from models import Artist, Album, Track, AlbumArtist, TrackArtist, Playlist
 from sqlmodel import Session
 
+from models.music import Artist, Album, AlbumArtist, Track, TrackArtist, Playlist
 
 ALLOWED_DATETIME_FORMATS = (
     "%Y-%m-%d %H:%M:%S.%f",

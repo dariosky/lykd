@@ -4,7 +4,7 @@ import asyncio
 import logging
 
 from models.auth import User
-from models.common import get_session
+from models.common import get_db
 from services import Spotify
 from services.likes import process_user_likes
 from sqlmodel import select
@@ -19,10 +19,8 @@ async def fetch_likes():
     print("Starting to fetch liked songs for all users...")
 
     # Get database session and fetch all users
-    session = next(get_session())
-    spotify_client = None
 
-    try:
+    with get_db() as session:
         spotify_client = Spotify(db_session=session)
         users = session.exec(select(User)).all()
 
@@ -74,19 +72,7 @@ async def fetch_likes():
 
         # Commit any token updates
         session.commit()
-
-    except Exception as e:
-        print(f"Error during execution: {e}")
-        if session:
-            session.rollback()
-        raise
-    finally:
-        # Close the Spotify client to free HTTP connections
-        if spotify_client:
-            await spotify_client.close()
-        # Properly close the database session
-        if session:
-            session.close()
+        await spotify_client.close()
 
     print("\nFinished processing all users.")
 

@@ -1,7 +1,8 @@
 # Create async tasks for all users
 from typing import Any
 
-from models import User, Like, Playlist
+from models.auth import User
+from models.music import Playlist, Like
 from services import Spotify
 from services.store import store_track
 from sqlmodel import select, Session

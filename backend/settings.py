@@ -13,10 +13,14 @@ if not SESSION_SECRET_KEY:  # pragma: no cover
     raise ValueError("SESSION_SECRET_KEY must be set")
 SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
 SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
-SELF_URL = os.getenv("SELF_URL", "http://localhost:8000")
+
 
 BACKEND_DIR = Path(__file__).parent
 DATABASE_PATH = BACKEND_DIR / "lykd.sqlite"
 DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DATABASE_PATH}")
 
 PROJECT_PATH = BACKEND_DIR.parent
+DEBUG_MODE = os.getenv("DEBUG_MODE", False)
+
+BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:3000")
+API_URL = os.getenv("API_URL", f"{BASE_URL}/api")

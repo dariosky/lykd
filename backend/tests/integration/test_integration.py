@@ -53,11 +53,11 @@ class TestSpotifyOAuthIntegration:
         )
 
         assert callback_response.status_code == 302
-        assert "localhost:3000" in callback_response.headers["location"]
+        assert "127.0.0.1:3000" in callback_response.headers["location"]
         assert "spotify=connected" in callback_response.headers["location"]
 
         # Step 4: Verify user was created in database
-        from models import User
+        from models.auth import User
 
         user = (
             test_session.query(User)
@@ -169,7 +169,7 @@ class TestDatabaseIntegration:
 
     def test_database_transaction_handling(self, client, test_session, httpx_mock):
         """Test that database transactions are handled correctly."""
-        from models import User
+        from models.auth import User
 
         # Count users before
         initial_count = test_session.query(User).count()
@@ -214,7 +214,7 @@ class TestErrorHandling:
 
     def test_database_connection_error_handling(self, client):
         """Test handling of database connection errors."""
-        with patch("models.get_session") as mock_get_session:
+        with patch("models.common.get_session") as mock_get_session:
             mock_get_session.side_effect = Exception("Database connection failed")
 
             # This should handle the database error gracefully

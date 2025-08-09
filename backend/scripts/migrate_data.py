@@ -99,7 +99,7 @@ def main():
             "album": "albums",
             "track": "tracks",
             "albumartist": "albums_artists",  # Source has albumartist
-            "trackartist": "tracks_artists",  # Source has trackartist
+            "trackartist": "artists_tracks",  # Source has trackartist
             "play": "plays",
             "liked": "likes",
         }

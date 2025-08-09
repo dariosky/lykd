@@ -5,7 +5,7 @@ from unittest.mock import patch
 from fastapi import HTTPException
 
 import settings
-from models import User
+from models.auth import User
 from services.spotify import Spotify
 
 
@@ -33,7 +33,7 @@ class TestSpotifyService:
         spotify = Spotify()
         assert spotify.client_id == "test_client_id"
         assert spotify.client_secret == "test_client_secret"
-        assert "localhost:8000/spotify/callback" in spotify.redirect_uri
+        assert "127.0.0.1:3000/api/spotify/callback" in spotify.redirect_uri
         assert len(spotify.scopes) > 0
         assert "user-read-email" in spotify.scopes
 
@@ -122,7 +122,7 @@ class TestSpotifyService:
         """Test successful liked songs retrieval."""
         httpx_mock.add_response(
             method="GET",
-            url="https://api.spotify.com/v1/me/tracks?offset=0&limit=50",
+            url="https://api.spotify.com/v1/me/tracks?limit=50",
             json=mock_spotify_responses["liked_songs"],
             status_code=200,
         )
@@ -134,9 +134,10 @@ class TestSpotifyService:
     async def test_get_liked_songs_with_pagination(self, spotify_service, httpx_mock):
         """Test liked songs retrieval with pagination."""
         # First page
+        second_page_url = "https://api.spotify.com/v1/me/tracks?offset=1&limit=1"
         first_page = {
             "items": [{"track": {"id": "track1", "name": "Song 1"}}],
-            "next": "https://api.spotify.com/v1/me/tracks?offset=1&limit=1",
+            "next": second_page_url,
             "total": 100,
         }
 
@@ -150,14 +151,14 @@ class TestSpotifyService:
         # Mock both requests
         httpx_mock.add_response(
             method="GET",
-            url="https://api.spotify.com/v1/me/tracks?offset=0&limit=1",
+            url="https://api.spotify.com/v1/me/tracks?limit=1",
             json=first_page,
             status_code=200,
         )
 
         httpx_mock.add_response(
             method="GET",
-            url="https://api.spotify.com/v1/me/tracks?offset=1&limit=1",
+            url=second_page_url,
             json=second_page,
             status_code=200,
         )

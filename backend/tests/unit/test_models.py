@@ -194,7 +194,7 @@ class TestDatabaseSession:
 
     def test_get_session_dependency(self):
         """Test the get_session dependency function."""
-        from models import get_session
+        from models.common import get_session
 
         # This should return a generator
         session_gen = get_session()

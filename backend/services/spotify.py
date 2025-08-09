@@ -20,6 +20,8 @@ from tenacity import (
     Future,
 )
 
+from utils import humanize_milliseconds
+
 logger = logging.getLogger("lykd.spotify")
 
 
@@ -42,7 +44,11 @@ class wait_retry_after_or_default(wait_base):
             retry_after = getattr(ex, "headers", {}).get("Retry-After")
             if retry_after is not None:
                 try:
-                    return max(0, int(retry_after))
+                    wait_seconds = max(0, int(retry_after))
+                    logger.debug(
+                        f"Rate-limited, retry after {humanize_milliseconds(wait_seconds * 1000)} seconds"
+                    )
+                    return wait_seconds
                 except ValueError:
                     pass
         return self.default_wait(retry_state)
@@ -108,7 +114,7 @@ class Spotify:
         self.db_session = db_session
         self.client_id = settings.SPOTIFY_CLIENT_ID
         self.client_secret = settings.SPOTIFY_CLIENT_SECRET
-        self.redirect_uri = f"{settings.SELF_URL}/spotify/callback"
+        self.redirect_uri = f"{settings.API_URL}/spotify/callback"
         self.scopes = [
             "user-read-email",
             "user-library-read",
@@ -210,52 +216,46 @@ class Spotify:
         return {"Authorization": f"Bearer {access_token}"}
 
     @spotify_retry()
-    async def get_page(
-        self, *, url: str, user: "User", limit: int = 50, offset: int = 0
-    ) -> Dict[str, Any]:
+    async def get_page(self, *, url: str, user: "User", params: None) -> Dict[str, Any]:
         """Get a page given an endpoint in the Spotify API"""
-
-        params = {"offset": offset, "limit": limit}
-
         response = await self.client.get(
             url, headers=self.get_headers(user), params=params
         )
 
         if response.status_code != 200:
-            raise exception_from_response(response, f"Request to {url} failed")
+            raise exception_from_response(response, f"GET {url} failed")
 
         return response.json()
 
     async def get_liked_page(
-        self, *, user: "User", limit: int = 50, offset: int = 0
+        self, *, user: "User", next_page: str | None = None, limit: int = 50
     ) -> Dict[str, Any]:
-        logger.debug(f"Fetching liked page for {user.email} - {offset}...")
+        url = next_page or "https://api.spotify.com/v1/me/tracks"
+        logger.debug(f"Fetching liked page for {user} - {url}...")
         return await self.get_page(
-            url="https://api.spotify.com/v1/me/tracks",
+            url=url,
             user=user,
-            limit=limit,
-            offset=offset,
+            params={"limit": limit} if not next_page else None,
         )
 
     async def get_playlists_page(
-        self, *, user: "User", limit: int = 50, offset: int = 0
+        self, *, user: "User", next_page: str | None = None, limit: int = 50
     ) -> Dict[str, Any]:
-        logger.debug(f"Fetching playlists page for {user.email} - {offset}...")
+        url = next_page or "https://api.spotify.com/v1/me/playlists"
+        logger.debug(f"Fetching playlists page for {user}: {url}")
         return await self.get_page(
-            url="https://api.spotify.com/v1/me/playlists",
+            url=url,
             user=user,
-            limit=limit,
-            offset=offset,
+            params={"limit": limit} if not next_page else None,
         )
 
     @staticmethod
     async def get_all(*, user: User, request, limit=50) -> list[Dict[str, Any]]:
         """Get all liked songs for a user by iterating through all pages"""
         items = []
-        offset = 0
-
+        next_page = None
         while True:
-            response = await request(user=user, limit=limit, offset=offset)
+            response = await request(user=user, limit=limit, next_page=next_page)
             page = response.get("items", [])
 
             if not page:
@@ -263,12 +263,13 @@ class Spotify:
 
             items.extend(page)
 
-            # Check if there are more tracks
-            next_url = response.get("next")
-            if len(page) < limit or not next_url:
+            if settings.DEBUG_MODE:
+                logger.info("Debug mode: stopping at page 1")
                 break
-
-            offset += limit
+            # Check if there are more tracks
+            next_page = response.get("next")
+            if not next_page:
+                break
 
         return items
 

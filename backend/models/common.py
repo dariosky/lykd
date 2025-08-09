@@ -1,6 +1,7 @@
 """Common database utilities and base models"""
 
 import datetime
+from contextlib import contextmanager
 
 import sqlmodel
 from pydantic import BaseModel, ConfigDict
@@ -29,3 +30,15 @@ def get_session() -> Generator[Session, None, None]:  # pragma: no cover
     """Get database session"""
     with Session(get_engine(), expire_on_commit=False) as session:
         yield session
+
+
+@contextmanager
+def get_db() -> Generator[Session, None, None]:  # pragma: no cover
+    """Context manager for database session"""
+    engine = get_engine()
+    session = Session(engine, expire_on_commit=False)
+    try:
+        yield session
+    finally:
+        session.close()
+        engine.dispose()

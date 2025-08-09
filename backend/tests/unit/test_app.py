@@ -93,7 +93,7 @@ class TestAppEndpoints:
         )
 
         assert response.status_code == 302  # Redirect
-        assert "localhost:3000" in response.headers["location"]
+        assert "127.0.0.1:3000" in response.headers["location"]
         assert "spotify=connected" in response.headers["location"]
 
     def test_spotify_callback_error(self, client):
@@ -104,10 +104,10 @@ class TestAppEndpoints:
         )
 
         assert response.status_code == 302  # Redirect
-        assert "localhost:3000/error" in response.headers["location"]
+        assert "127.0.0.1:3000/error" in response.headers["location"]
         assert (
             response.headers["location"]
-            == "http://localhost:3000/error?message=Spotify%20authorization%20failed:%20access_denied"
+            == "http://127.0.0.1:3000/error?message=Spotify%20authorization%20failed:%20access_denied"
         )
 
     async def test_spotify_callback_existing_user(
@@ -166,7 +166,7 @@ class TestAppEndpoints:
         )
 
         assert response.status_code == 302
-        assert "localhost:3000/error" in response.headers["location"]
+        assert "127.0.0.1:3000/error" in response.headers["location"]
 
 
 class TestUtilityFunctions:

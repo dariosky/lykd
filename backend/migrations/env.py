@@ -1,6 +1,7 @@
 from alembic import context
 from sqlalchemy import engine_from_config, pool
-from models import *  # noqa
+from models.auth import *  # noqa
+from models.music import *  # noqa
 
 from sqlmodel import SQLModel
 

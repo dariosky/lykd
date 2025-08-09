@@ -13,7 +13,8 @@ from starlette.middleware.sessions import SessionMiddleware
 import settings
 
 # Import models and services
-from models import User, get_session
+from models.auth import User
+from models.common import get_session
 from services import Spotify
 from settings import PROJECT_PATH
 
@@ -130,7 +131,7 @@ def create_app() -> FastAPI:
         # TODO: Validate the state parameter to prevent CSRF attacks
         if error:
             return RedirectResponse(
-                url=f"http://localhost:3000/error?message=Spotify authorization failed: {error}",
+                url=f"{settings.BASE_URL}/error?message=Spotify authorization failed: {error}",
                 status_code=302,
             )
 
@@ -187,7 +188,7 @@ def create_app() -> FastAPI:
 
             # Redirect to frontend with success
             return RedirectResponse(
-                url="http://localhost:3000/?spotify=connected", status_code=302
+                url=f"{settings.BASE_URL}/?spotify=connected", status_code=302
             )
 
         except Exception as e:
@@ -199,7 +200,7 @@ def create_app() -> FastAPI:
                 else "Unknown error occurred during Spotify authorization"
             )
             return RedirectResponse(
-                url=f"http://localhost:3000/error?message={error_message}",
+                url=f"{settings.BASE_URL}/error?message={error_message}",
                 status_code=302,
             )
 

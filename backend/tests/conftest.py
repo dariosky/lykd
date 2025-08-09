@@ -12,15 +12,12 @@ from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel.pool import StaticPool
 
 
-from models import User
-
 # Set test environment before importing backend modules
 os.environ["TESTING"] = "true"
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 os.environ["SPOTIFY_CLIENT_ID"] = "test_client_id"
 os.environ["SPOTIFY_CLIENT_SECRET"] = "test_client_secret"
 os.environ["SESSION_SECRET_KEY"] = "test_secret_key"
-os.environ["SELF_URL"] = "http://localhost:8000"
 
 
 @pytest.fixture(autouse=True, scope="session")
@@ -110,6 +107,8 @@ def test_token_data():
 @pytest.fixture
 def test_user(test_session, test_user_data, test_token_data):
     """Create a test user in the database."""
+    from models.auth import User
+
     user = User(
         id=test_user_data["id"],
         name=test_user_data["display_name"],

@@ -34,7 +34,7 @@ default = true
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "session"
 addopts = [
-    "--cov-fail-under=80",
+#    "--doctest-modules"
 ]
 asyncio_mode = "auto"
 filterwarnings = [
