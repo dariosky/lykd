@@ -110,7 +110,6 @@ class TestSpotifyOAuthIntegration:
         assert callback_response.status_code == 302
 
         # Verify user tokens were updated
-        test_session.refresh(test_user)
         assert test_user.tokens["access_token"] == "updated_access_token"
         assert test_user.tokens["access_token"] != original_token
         assert test_user.name == "Updated Name"

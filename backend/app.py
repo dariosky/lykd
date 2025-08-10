@@ -16,6 +16,7 @@ import settings
 from models.auth import User
 from models.common import get_session
 from services import Spotify
+from services.slack import slack
 from settings import PROJECT_PATH
 
 logger = logging.getLogger("lykd.main")
@@ -144,18 +145,11 @@ def create_app() -> FastAPI:
 
             # Save or update user in database
             # Check if user already exists
-            existing_user = (
-                session.query(User).filter(User.email == user_info["email"]).first()
-            )
+            existing_user = session.get(User, user_info["id"])
 
             if existing_user:
                 # Update existing user's tokens
-                existing_user.tokens = {
-                    "access_token": token_data["access_token"],
-                    "refresh_token": token_data.get("refresh_token"),
-                    "expires_in": token_data.get("expires_in"),
-                    "scope": token_data.get("scope"),
-                }
+                existing_user.tokens = token_data
                 existing_user.name = user_info["display_name"] or user_info["id"]
                 existing_user.picture = (
                     user_info["images"][0]["url"] if user_info.get("images") else ""
@@ -179,9 +173,9 @@ def create_app() -> FastAPI:
                     },
                 )
                 session.add(user)
+                slack.send_message(f"🐣New user connected to Spotify: {user.email}")
 
             session.commit()
-            session.refresh(user)
 
             # Store user ID in session
             request.session["user_id"] = user.id

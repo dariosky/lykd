@@ -26,3 +26,5 @@ DEBUG_MODE = parse_bool(os.getenv("DEBUG_MODE", False))
 
 BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:3000")
 API_URL = os.getenv("API_URL", f"{BASE_URL}/api")
+
+SLACK_TOKEN = os.getenv("SLACK_TOKEN") or None

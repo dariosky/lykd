@@ -4,10 +4,11 @@ import datetime
 from contextlib import contextmanager
 
 import sqlmodel
+from cachetools.func import ttl_cache
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 from sqlmodel import create_engine, Session, Field
-from typing import Generator
+from typing import Generator, Callable
 
 
 # Create engine
@@ -48,3 +49,31 @@ def parse_bool(bool_str: str | bool):
     if isinstance(bool_str, str):
         return bool_str.lower() in ("true", "1")
     return bool(bool_str)
+
+
+loggers: dict[int, Callable] = {}
+
+
+def ratelimited_log(delay_or_fn: int | Callable, msg=None):
+    if callable(delay_or_fn):
+        logger_method = delay_or_fn
+        delay = 60
+    else:
+        delay = delay_or_fn
+        logger_method = None
+
+    if delay not in loggers:
+
+        @ttl_cache(ttl=delay)
+        def call(logger_method, message):
+            logger_method(message)
+
+        # Store the rate-limited logger function in the loggers dictionary
+        loggers[delay] = call
+
+    if logger_method is not None:
+        # Call the rate-limited logger function if logger_method is provided
+        return loggers[delay](logger_method, msg)
+    else:
+        # Return the rate-limited logger function for later use
+        return loggers[delay]

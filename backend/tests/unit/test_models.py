@@ -22,7 +22,6 @@ class TestUserModel:
         user = User(**user_data)
         test_session.add(user)
         test_session.commit()
-        test_session.refresh(user)
 
         assert user.id == "test_user_123"
         assert user.name == "Test User"
@@ -49,7 +48,6 @@ class TestUserModel:
         user = User(id="test_user", name="Test User", email="test@example.com")
         test_session.add(user)
         test_session.commit()
-        test_session.refresh(user)
 
         assert user.picture is None
         assert user.tokens == {}
@@ -63,7 +61,6 @@ class TestUserModel:
         )
         test_session.add(user)
         test_session.commit()
-        test_session.refresh(user)
 
         assert user.is_admin is True
 
@@ -78,7 +75,6 @@ class TestMusicModels:
         )
         test_session.add(artist)
         test_session.commit()
-        test_session.refresh(artist)
 
         assert artist.id == "artist123"
         assert artist.name == "Test Artist"
@@ -94,7 +90,6 @@ class TestMusicModels:
         )
         test_session.add(album)
         test_session.commit()
-        test_session.refresh(album)
 
         assert album.id == "album123"
         assert album.name == "Test Album"
@@ -110,7 +105,6 @@ class TestMusicModels:
         )
         test_session.add(track)
         test_session.commit()
-        test_session.refresh(track)
 
         assert track.id == "track123"
         assert track.title == "Test Track"
@@ -125,7 +119,6 @@ class TestMusicModels:
         liked = Like(user_id=test_user.id, track_id=track.id)
         test_session.add(liked)
         test_session.commit()
-        test_session.refresh(liked)
 
         assert liked.user_id == test_user.id
         assert liked.track_id == track.id
@@ -144,7 +137,6 @@ class TestMusicModels:
         )
         test_session.add(play)
         test_session.commit()
-        test_session.refresh(play)
 
         assert play.user_id == test_user.id
         assert play.track_id == track.id
@@ -164,7 +156,6 @@ class TestMusicModels:
         track_artist = TrackArtist(track_id=track.id, artist_id=artist.id)
         test_session.add(track_artist)
         test_session.commit()
-        test_session.refresh(track_artist)
 
         assert track_artist.track_id == track.id
         assert track_artist.artist_id == artist.id
@@ -183,7 +174,6 @@ class TestMusicModels:
         album_artist = AlbumArtist(album_id=album.id, artist_id=artist.id)
         test_session.add(album_artist)
         test_session.commit()
-        test_session.refresh(album_artist)
 
         assert album_artist.album_id == album.id
         assert album_artist.artist_id == artist.id

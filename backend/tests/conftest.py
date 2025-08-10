@@ -19,6 +19,7 @@ os.environ["SPOTIFY_CLIENT_ID"] = "test_client_id"
 os.environ["SPOTIFY_CLIENT_SECRET"] = "test_client_secret"
 os.environ["SESSION_SECRET_KEY"] = "test_secret_key"
 os.environ["DEBUG_MODE"] = "False"
+os.environ["SLACK_TOKEN"] = ""
 
 
 @pytest.fixture(autouse=True, scope="session")
@@ -119,7 +120,6 @@ def test_user(test_session, test_user_data, test_token_data):
     )
     test_session.add(user)
     test_session.commit()
-    test_session.refresh(user)
     return user
 
 

@@ -20,6 +20,8 @@ from tenacity import (
     Future,
 )
 
+from models.common import ratelimited_log
+from services.slack import slack
 from utils import humanize_milliseconds
 
 logger = logging.getLogger("lykd.spotify")
@@ -45,6 +47,9 @@ class wait_retry_after_or_default(wait_base):
             if retry_after is not None:
                 try:
                     wait_seconds = max(0, int(retry_after))
+                    ratelimited_log(60 * 60)(
+                        slack.send_message, "⚠️ Rate-limited by Spotify"
+                    )
                     logger.debug(
                         f"Rate-limited, retry after {humanize_milliseconds(wait_seconds * 1000)} seconds"
                     )
@@ -83,6 +88,7 @@ async def renew_token_if_expired(retry_state):
                     and "Refresh token revoked" in exception.detail
                 ):
                     logger.warning("User is gone, marking as inactive")
+                    slack.send_message(f"🛑User is gone: {user.email}")
                     user.tokens = None
                     if spotify.db_session:
                         logger.debug(f"Refreshed the user {user.email} tokens")
