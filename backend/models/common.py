@@ -42,3 +42,9 @@ def get_db() -> Generator[Session, None, None]:  # pragma: no cover
     finally:
         session.close()
         engine.dispose()
+
+
+def parse_bool(bool_str: str | bool):
+    if isinstance(bool_str, str):
+        return bool_str.lower() in ("true", "1")
+    return bool(bool_str)

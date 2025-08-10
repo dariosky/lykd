@@ -3,6 +3,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from models.common import parse_bool
+
 # Load environment variables from .env file in the backend folder
 backend_dir = Path(__file__).parent
 env_path = backend_dir / ".env"
@@ -20,7 +22,7 @@ DATABASE_PATH = BACKEND_DIR / "lykd.sqlite"
 DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DATABASE_PATH}")
 
 PROJECT_PATH = BACKEND_DIR.parent
-DEBUG_MODE = os.getenv("DEBUG_MODE", False)
+DEBUG_MODE = parse_bool(os.getenv("DEBUG_MODE", False))
 
 BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:3000")
 API_URL = os.getenv("API_URL", f"{BASE_URL}/api")
