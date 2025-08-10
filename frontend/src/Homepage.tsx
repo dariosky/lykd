@@ -33,7 +33,6 @@ function Homepage() {
 
       <main className="homepage-main">
         <div className="welcome-section">
-          <h1 className="welcome-title">Welcome to LYKD</h1>
           <p className="welcome-description">
             Connect your music services and discover new songs through your
             friends' recommendations. Keep liking your favorite tracks and get
