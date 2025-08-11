@@ -32,7 +32,7 @@ def copy_table_data(source_cursor, dest_cursor, source_table, dest_table):
     print(f"  Common columns: {common_columns}")
 
     # Get all data from source table
-    source_cursor.execute(f"SELECT {columns_str} FROM {source_table}")
+    source_cursor.execute(f"SELECT {columns_str} FROM {source_table}")  # nosec B608
     rows = source_cursor.fetchall()
 
     if not rows:
@@ -122,7 +122,7 @@ def main():
         print("\nSummary:")
         for dest_table in dest_tables:
             if dest_table != "alembic_version":
-                dest_cursor.execute(f"SELECT COUNT(*) FROM {dest_table}")
+                dest_cursor.execute(f"SELECT COUNT(*) FROM {dest_table}")  # nosec B608:hardcoded_sql_expressions
                 count = dest_cursor.fetchone()[0]
                 print(f"  {dest_table}: {count} rows")
 

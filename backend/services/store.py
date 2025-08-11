@@ -1,36 +1,21 @@
-import datetime
+from sqlmodel import Session, Column, delete
 
-from sqlmodel import Session
-
-from models.music import Artist, Album, AlbumArtist, Track, TrackArtist, Playlist
-
-ALLOWED_DATETIME_FORMATS = (
-    "%Y-%m-%d %H:%M:%S.%f",
-    "%Y-%m-%d %H:%M:%S",
-    "%Y-%m-%dT%H:%M:%SZ",
-    "%Y-%m-%dT%H:%M:%S.%fZ",
-    "%Y-%m-%d",
-    "%Y-%m-%d %H:%M",
-    "%Y-%m",
+from models.auth import User
+from models.music import (
+    Artist,
+    Album,
+    AlbumArtist,
+    Track,
+    TrackArtist,
+    Playlist,
+    Like,
+    PlaylistTrack,
 )
+import logging
 
+from utils.dates import parse_date
 
-def parse_date(date_str):
-    if isinstance(date_str, str):
-        if len(date_str) == 4:
-            date_str += "-01-01"  # %Y, let's add Jan01
-        elif len(date_str) == 7:
-            date_str += "-01"  # %Y-%M, let's add the day to be able to parse
-        date_str = date_str.strip()
-        for date_fmt in ALLOWED_DATETIME_FORMATS:
-            try:
-                return datetime.datetime.strptime(date_str, date_fmt)
-            except ValueError:
-                pass
-        raise ValueError(
-            f"Invalid date: '{date_str}', please pass a datetime or a string format"
-        )
-    return date_str
+logger = logging.getLogger("lykd.store")
 
 
 def store_track(track, db_session: Session):
@@ -42,6 +27,7 @@ def store_track(track, db_session: Session):
             id=artist_data["id"],
             name=artist_data["name"],
             picture=artist_data.get("picture"),
+            uri=artist_data.get("uri"),
         )
         merged_artist = db_session.merge(artist)
         artists.append(merged_artist)
@@ -61,6 +47,7 @@ def store_track(track, db_session: Session):
             picture=album_data["images"][0]["url"]
             if album_data.get("images")
             else None,
+            uri=album_data.get("uri"),
         )
         album = db_session.merge(album)
 
@@ -86,6 +73,7 @@ def store_track(track, db_session: Session):
         title=track["name"],
         duration=track["duration_ms"],
         album_id=album.id if album else None,
+        uri=track["uri"],
     )
     t = db_session.merge(t)
 
@@ -94,8 +82,6 @@ def store_track(track, db_session: Session):
         track_artist_relation = TrackArtist(track_id=t.id, artist_id=artist.id)
         db_session.merge(track_artist_relation)
 
-    # Commit all changes
-    db_session.commit()
     return t
 
 
@@ -107,7 +93,38 @@ def store_playlist(playlist: dict, db_session: Session):
         picture=playlist["images"][0]["url"] if playlist.get("images") else None,
         owner_id=playlist["owner"]["id"],
         is_public=playlist["public"],
+        uri=playlist["uri"],
     )
     p = db_session.merge(p)
-    db_session.commit()
     return p
+
+
+def update_playlist_db(
+    playlist_id: str,
+    tracks_to_add: list[PlaylistTrack],
+    tracks_to_remove: set[str],
+    db: Session,
+):
+    for playlist_track in tracks_to_add:
+        db.merge(playlist_track)
+    if tracks_to_remove:
+        db.exec(
+            delete(PlaylistTrack).where(
+                playlist_id == playlist_id,
+                Column(Like.track_id).in_(list(tracks_to_remove)),
+            )
+        )
+
+
+def update_likes_db(
+    user: User, likes_to_add: list[Like], tracks_to_remove: set[str], db: Session
+):
+    for like in likes_to_add:
+        db.merge(like)
+    if tracks_to_remove:
+        db.exec(
+            delete(Like).where(
+                Like.user_id == user.id,
+                Column(Like.track_id).in_(list(tracks_to_remove)),
+            )
+        )

@@ -23,6 +23,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DATABASE_PATH}")
 
 PROJECT_PATH = BACKEND_DIR.parent
 DEBUG_MODE = parse_bool(os.getenv("DEBUG_MODE", False))
+TESTING_MODE = parse_bool(os.getenv("TESTING_MODE", False))
 
 BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:3000")
 API_URL = os.getenv("API_URL", f"{BASE_URL}/api")

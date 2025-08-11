@@ -16,6 +16,8 @@ dependencies = [
     "tenacity>=9.1.2",
     "slack-sdk>=3.36.0",
     "cachetools>=6.1.0",
+    "diskcache>=5.6.3",
+    "bandit>=1.8.6",
 ]
 
 [dependency-groups]
@@ -66,3 +68,6 @@ exclude_lines = [
     "class .*\\bProtocol\\):",
     "@(abc\\.)?abstractmethod",
 ]
+
+[tool.bandit]
+exclude_dirs = ["*/tests/*", "/influx_client.py", ".venv"]

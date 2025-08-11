@@ -20,9 +20,11 @@ from tenacity import (
     Future,
 )
 
-from models.common import ratelimited_log
 from services.slack import slack
 from utils import humanize_milliseconds
+from utils.cache import disk_cache
+from utils.chunks import reverse_block_chunks
+from utils.logs import ratelimited_log
 
 logger = logging.getLogger("lykd.spotify")
 
@@ -106,7 +108,9 @@ async def renew_token_if_expired(retry_state):
 spotify_retry = partial(
     retry,
     before_sleep=before_sleep_log(logger, logging.WARNING),
-    wait=wait_retry_after_or_default(default_wait=wait_random(0, 0.5)),
+    wait=wait_retry_after_or_default(
+        default_wait=wait_random(0, 0 if settings.TESTING_MODE else 0.5)
+    ),
     stop=stop_after_attempt(2),
     reraise=True,
     after=renew_token_if_expired,
@@ -137,7 +141,7 @@ class Spotify:
 
         # Initialize reusable HTTP client with connection pooling
         self.client = httpx.AsyncClient(
-            verify=False,  # Remove in production
+            verify=not settings.DEBUG_MODE,
             timeout=30.0,
             limits=httpx.Limits(max_keepalive_connections=5, max_connections=10),
         )
@@ -167,7 +171,7 @@ class Spotify:
     @spotify_retry()
     async def exchange_code_for_token(self, code: str) -> Dict[str, Any]:
         """Exchange authorization code for access token"""
-        token_url = "https://accounts.spotify.com/api/token"
+        token_url = "https://accounts.spotify.com/api/token"  # nosec: B105:hardcoded_password_string
 
         data = {
             "grant_type": "authorization_code",
@@ -221,8 +225,15 @@ class Spotify:
         access_token = user.get_access_token()
         return {"Authorization": f"Bearer {access_token}"}
 
+    @disk_cache(
+        cache_dir=f"{settings.BACKEND_DIR}/.cache/spotify",
+        namespace="spotify",
+        enable=settings.DEBUG_MODE,
+    )
     @spotify_retry()
-    async def get_page(self, *, url: str, user: "User", params: None) -> Dict[str, Any]:
+    async def get_page(
+        self, *, url: str, user: "User", params: Dict[str, Any] | None = None
+    ) -> Dict[str, Any]:
         """Get a page given an endpoint in the Spotify API"""
         response = await self.client.get(
             url, headers=self.get_headers(user), params=params
@@ -269,9 +280,6 @@ class Spotify:
 
             items.extend(page)
 
-            if settings.DEBUG_MODE:
-                logger.info("Debug mode: stopping at page 1")
-                break
             # Check if there are more tracks
             next_page = response.get("next")
             if not next_page:
@@ -337,3 +345,65 @@ class Spotify:
             raise exception_from_response(response, f"Delete {url} failed")
 
         return response.json()
+
+    @spotify_retry()
+    async def change_playlist(
+        self,
+        user: User,
+        playlist_id: str,
+        tracks_to_add: list[str] | None = None,
+        tracks_to_remove: set[str] | None = None,
+    ):
+        """Change a playlist by adding and/or removing tracks"""
+        logger.info(f"Changing playlist {playlist_id} for {user}")
+
+        # Remove tracks first if specified
+        url = f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks"
+        if tracks_to_remove:
+            logger.debug(
+                f"Removing {len(tracks_to_remove)} tracks from playlist {playlist_id}"
+            )
+            for tracks in reverse_block_chunks(tracks_to_remove, 100):
+                payload = {"tracks": [{"uri": get_uri(t)} for t in tracks]}
+
+                remove_response = await self.client.delete(
+                    url,
+                    headers={
+                        **self.get_headers(user),
+                        "Content-Type": "application/json",
+                    },
+                    json=payload,
+                )
+
+                if remove_response.status_code != 200:
+                    raise exception_from_response(
+                        remove_response, f"Remove tracks from {url} failed"
+                    )
+
+        # Add tracks if specified
+        if tracks_to_add:
+            logger.debug(
+                f"Adding {len(tracks_to_add)} tracks to playlist {playlist_id}"
+            )
+            for tracks in reverse_block_chunks(tracks_to_add, 100):
+                payload = {
+                    "uris": [get_uri(t) for t in tracks],
+                    "position": 0,
+                }
+                add_response = await self.client.post(
+                    url,
+                    headers={
+                        **self.get_headers(user),
+                        "Content-Type": "application/json",
+                    },
+                    json=payload,
+                )
+
+                if add_response.status_code != 201:
+                    raise exception_from_response(
+                        add_response, f"Add tracks to {url} failed"
+                    )
+
+
+def get_uri(track_id: str, track_type: str = "track"):
+    return "spotify:" + track_type + ":" + track_id

@@ -1,82 +1,127 @@
 # Create async tasks for all users
 from typing import Any
 
+
 from models.auth import User
-from models.music import Playlist, Like
+from models.music import Playlist, Like, PlaylistTrack
 from services import Spotify
-from services.store import store_track
+from services.store import (
+    store_track,
+    store_playlist,
+    update_likes_db,
+    update_playlist_db,
+)
 from sqlmodel import select, Session
-import datetime
-from datetime import timezone
+
+import logging
+
+from utils.dates import parse_date
+
+logger = logging.getLogger("lykd.likes")
 
 
 async def process_user_likes(
-    db: Session, user: User, spotify: Spotify, playlist_name: str = "Lyked Songs"
+    db: Session, user: User, spotify: Spotify, playlist_name: str = "Lykd Songs"
 ):
-    """
-    For a user
-    1. Create a Spotify playlist named "Liked Songs"
-    2. Fetch all liked songs from Spotify - create tracks and likes in the db and in the playlist
-    3. Delete all the unliked songs
-    """
-    playlist = await spotify.get_or_create_playlist(
+    # Create a Spotify playlist
+    spotify_playlist = await spotify.get_or_create_playlist(
         user=user, playlist_name=playlist_name
     )
-    print(f"Processing user likes: {user.email}")
+    playlist = store_playlist(spotify_playlist, db_session=db)
+    logger.debug(f"Processing user likes: {user.email}")
+    # Fetch all liked songs from Spotify
     liked_songs = await spotify.get_all(
         user=user,
         request=spotify.get_liked_page,
     )
-
-    process_liked_songs(db, user, liked_songs, playlist)
+    # store the liked songs - create likes and sync with the playlist
+    await process_liked_songs(db, spotify, user, liked_songs, playlist)
     return user.email, len(liked_songs)
 
 
-def process_liked_songs(
-    db: Session, user: User, liked_songs: list[dict[str, Any]], playlist: Playlist
+async def process_liked_songs(
+    db: Session,
+    spotify: Spotify,
+    user: User,
+    liked_songs: list[dict[str, Any]],
+    playlist: Playlist,
 ) -> None:
     """Process and store all liked songs data"""
-    print(f"\nProcessing {len(liked_songs)} liked songs for user {user.email}:")
-
-    for i, item in enumerate(liked_songs):
-        track_data = item.get("track", {})
-        if not track_data:
-            continue
-
-        try:
-            # Store the track and its related data
-            stored_track = store_track(track_data, db)
-
-            # Create or update the like relationship
-            statement = select(Like).where(
+    logging.info(f"\nProcessing {len(liked_songs)} liked songs for user {user.email}:")
+    all_db_like_ids = {
+        like.track_id
+        for like in db.exec(
+            select(Like).where(
                 Like.user_id == user.id,
-                Like.track_id == stored_track.id,
             )
-            existing_like = db.exec(statement).first()
+        )
+    }
+    all_spotify_likes_ids = {
+        spotify_like.get("track", {}).get("id") for spotify_like in liked_songs
+    }
 
-            if not existing_like:
-                # Create new like
-                like = Like(
-                    user_id=user.id,
-                    track_id=stored_track.id,
-                    date=datetime.datetime.now(timezone.utc),
-                )
-                db.add(like)
-                db.commit()
+    new_spotify_likes = [
+        spotify_like
+        for spotify_like in liked_songs
+        if spotify_like.get("track", {}).get("id") not in all_db_like_ids
+    ]
+    tracks_to_add = {
+        spotify_like.get("track", {}).get("id") for spotify_like in new_spotify_likes
+    }
+    tracks_to_remove = all_db_like_ids - all_spotify_likes_ids
 
-            # Progress feedback
-            if (i + 1) % 100 == 0:
-                print(f"  Processed {i + 1}/{len(liked_songs)} tracks...")
-
+    for like in new_spotify_likes:
+        track_data = like.get("track", {})
+        try:
+            store_track(track_data, db)
         except Exception as e:
-            print(f"  Error processing track {track_data.get('name', 'Unknown')}: {e}")
-            # Rollback the transaction for this track and continue
-            db.rollback()
-            continue
+            logger.error(
+                f"  Error processing track {track_data.get('name', 'Unknown')}: {e}"
+            )
 
-    print(
-        f"Successfully processed all {len(liked_songs)} liked songs for user {user.email}"
+    new_likes = [
+        Like(
+            user_id=user.id,
+            track_id=like.get("track", {}).get("id"),
+            date=parse_date(like["added_at"]),
+        )
+        for like in new_spotify_likes
+    ]
+    update_likes_db(
+        user,
+        likes_to_add=new_likes,
+        tracks_to_remove=tracks_to_remove,
+        db=db,
+    )
+    update_playlist_db(
+        playlist.id,
+        tracks_to_add=[
+            PlaylistTrack(
+                playlist_id=playlist.id,
+                track_id=like.track_id,
+                date=like.date,
+            )
+            for like in new_likes
+        ],
+        tracks_to_remove=tracks_to_remove,
+        db=db,
     )
 
-    # TODO: Here you can add code to store the songs in your database
-    # For example, create Track, Artist, Album records and user_liked_songs associations
+    if tracks_to_add or tracks_to_remove:
+        # TODO: can be that the Spotify playlist has different likes than the DB
+        await spotify.change_playlist(
+            user=user,
+            playlist_id=playlist.id,
+            tracks_to_add=[
+                track_id
+                for spotify_like in new_spotify_likes
+                if (track_id := spotify_like.get("track", {}).get("id"))
+                not in all_db_like_ids
+            ],
+            tracks_to_remove=tracks_to_remove,
+        )
+        db.commit()
+        logger.info(
+            f"{user.email} likes:"
+            f" {len(tracks_to_add)} added, {len(tracks_to_remove)} deleted "
+        )

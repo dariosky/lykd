@@ -18,3 +18,9 @@ repos:
         language: system
         files: ^frontend/.*\.(js|jsx|ts|tsx|json|css|html)$
         pass_filenames: false
+  - repo: https://github.com/PyCQA/bandit
+    rev: '1.8.6'
+    hooks:
+      - id: bandit
+        args: [ "-c", "pyproject.toml", "-r", "backend" ]
+        additional_dependencies: [ "bandit[toml]" ]

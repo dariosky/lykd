@@ -29,6 +29,7 @@ class Album(SQLModel, CamelModel, table=True):
     picture: str | None
     release_date: datetime.date | None
     release_date_precision: DatePrecision | None
+    uri: str | None = None
 
 
 class TrackArtist(SQLModel, CamelModel, table=True):
@@ -48,6 +49,7 @@ class Track(SQLModel, CamelModel, table=True):
 
     # Relationship to playlists through PlaylistTrack
     playlist_tracks: List["PlaylistTrack"] = Relationship(back_populates="track")
+    uri: str | None = None
 
 
 class AlbumArtist(SQLModel, CamelModel, table=True):
@@ -65,6 +67,7 @@ class Play(SQLModel, CamelModel, table=True):
     date: datetime.datetime = Field(
         default_factory=lambda: datetime.datetime.now(timezone.utc), primary_key=True
     )
+    context_uri: str | None = Field(default=None)
 
 
 class Like(SQLModel, CamelModel, table=True):
@@ -100,6 +103,7 @@ class Playlist(SQLModel, CamelModel, table=True):
     picture: str | None = None
     owner_id: str = Field(foreign_key="users.id")
     is_public: bool = True
+    uri: str | None = None
 
     # Relationship to get tracks through PlaylistTrack
     playlist_tracks: List["PlaylistTrack"] = Relationship(back_populates="playlist")
