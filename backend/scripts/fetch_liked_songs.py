@@ -6,7 +6,7 @@ import logging
 from models.auth import User
 from models.common import get_db
 from services import Spotify
-from services.likes import process_user_likes
+from services.likes import process_user
 from sqlmodel import select
 from utils import setup_logs, time_it
 
@@ -45,8 +45,7 @@ async def fetch_likes():
 
         # Execute all user processing concurrently
         tasks = [
-            process_user_likes(session, user, spotify_client)
-            for user in users_with_tokens
+            process_user(session, user, spotify_client) for user in users_with_tokens
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 

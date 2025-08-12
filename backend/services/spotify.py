@@ -255,6 +255,15 @@ class Spotify:
             params={"limit": limit} if not next_page else None,
         )
 
+    async def get_recently_played_page(
+        self, *, user: "User", next_page: str | None = None, limit: int = 50
+    ) -> Dict[str, Any]:
+        url = next_page or "https://api.spotify.com/v1/me/player/recently-played"
+        logger.debug(f"Fetching recent page for {user} - {url}...")
+        return await self.get_page(
+            url=url, user=user, params={"limit": limit} if not next_page else None
+        )
+
     async def get_playlists_page(
         self, *, user: "User", next_page: str | None = None, limit: int = 50
     ) -> Dict[str, Any]:
@@ -287,6 +296,24 @@ class Spotify:
 
         return items
 
+    @staticmethod
+    async def yield_from(*, user: User, request, limit=50):
+        """Yield results from a paginated list of requests"""
+        next_page = None
+        while True:
+            response = await request(user=user, limit=limit, next_page=next_page)
+            page = response.get("items", [])
+
+            if not page:
+                break
+            for item in page:
+                yield item
+
+            # Check if there are more tracks
+            next_page = response.get("next")
+            if not next_page:
+                break
+
     @spotify_retry()
     async def get_or_create_playlist(self, user: User, playlist_name: str):
         playlists = await self.get_all_playlists(user)
@@ -307,8 +334,9 @@ class Spotify:
             playlist = same_name_playlists[-1]  # getting the last
             if len(same_name_playlists) > 1:
                 for duplicated_playlist in same_name_playlists[:-1]:
-                    logger.debug(f"Removing duplicated {duplicated_playlist['id']}")
-                    await self.delete_playlist(user, duplicated_playlist["id"])
+                    playlist_id = duplicated_playlist["id"]
+                    logger.debug(f"Removing duplicated {playlist_id}")
+                    await self.delete_playlist(user, playlist_id)
 
         return playlist
 
@@ -333,7 +361,7 @@ class Spotify:
 
         return response.json()
 
-    async def delete_playlist(self, user, playlist_id: str):
+    async def delete_playlist(self, user, playlist_id: str) -> None:
         logger.info(f"Deleting playlist {playlist_id} for {user}")
         url = f"https://api.spotify.com/v1/playlists/{playlist_id}/followers"
         response = await self.client.delete(
@@ -344,7 +372,7 @@ class Spotify:
         if response.status_code != 200:
             raise exception_from_response(response, f"Delete {url} failed")
 
-        return response.json()
+        return None
 
     @spotify_retry()
     async def change_playlist(

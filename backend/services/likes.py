@@ -20,7 +20,7 @@ from utils.dates import parse_date
 logger = logging.getLogger("lykd.likes")
 
 
-async def process_user_likes(
+async def process_user(
     db: Session, user: User, spotify: Spotify, playlist_name: str = "Lykd Songs"
 ):
     # Create a Spotify playlist
@@ -36,6 +36,7 @@ async def process_user_likes(
     )
     # store the liked songs - create likes and sync with the playlist
     await process_liked_songs(db, spotify, user, liked_songs, playlist)
+    await process_plays(db, spotify, user)
     return user.email, len(liked_songs)
 
 
@@ -125,3 +126,15 @@ async def process_liked_songs(
             f"{user.email} likes:"
             f" {len(tracks_to_add)} added, {len(tracks_to_remove)} deleted "
         )
+
+
+async def process_plays(db, spotify: Spotify, user):
+    # this works a bit differently than likes
+    # we yield and stop as soon as we find a play that has been already written
+    async for play in spotify.yield_from(
+        user=user,
+        request=spotify.get_recently_played_page,
+    ):
+        track_data = play.get("track", {})
+        print(track_data)
+        break  # TODO: this will stop processing the following data

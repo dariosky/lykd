@@ -1,4 +1,4 @@
-from sqlmodel import Session, Column, delete
+from sqlmodel import Session, delete
 
 from models.auth import User
 from models.music import (
@@ -111,7 +111,7 @@ def update_playlist_db(
         db.exec(
             delete(PlaylistTrack).where(
                 playlist_id == playlist_id,
-                Column(Like.track_id).in_(list(tracks_to_remove)),
+                Like.track_id.in_(list(tracks_to_remove)),
             )
         )
 
@@ -125,6 +125,6 @@ def update_likes_db(
         db.exec(
             delete(Like).where(
                 Like.user_id == user.id,
-                Column(Like.track_id).in_(list(tracks_to_remove)),
+                Like.track_id.in_(list(tracks_to_remove)),
             )
         )
