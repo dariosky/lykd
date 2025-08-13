@@ -13,6 +13,7 @@ class Artist(SQLModel, CamelModel, table=True):
     id: str = Field(primary_key=True)
     name: str
     picture: str | None
+    uri: str | None = None
 
 
 class DatePrecision(str, Enum):

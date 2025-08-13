@@ -3,7 +3,7 @@ from typing import Any
 
 
 from models.auth import User
-from models.music import Playlist, Like, PlaylistTrack
+from models.music import Playlist, Like, PlaylistTrack, Play
 from services import Spotify
 from services.store import (
     store_track,
@@ -131,10 +131,29 @@ async def process_liked_songs(
 async def process_plays(db, spotify: Spotify, user):
     # this works a bit differently than likes
     # we yield and stop as soon as we find a play that has been already written
+    added = 0
     async for play in spotify.yield_from(
         user=user,
         request=spotify.get_recently_played_page,
     ):
         track_data = play.get("track", {})
-        print(track_data)
-        break  # TODO: this will stop processing the following data
+        track_id = track_data.get("id")
+        played_at = parse_date(play.get("played_at"))
+        existing_play = db.get(Play, (user.id, track_id, played_at))
+        if existing_play:
+            # play already exists, stop processing
+            break
+        context = play.get("context") or {}
+        context_uri = context.get("uri")
+        track = store_track(track_data, db)
+        db.merge(
+            Play(
+                user_id=user.id,
+                track_id=track.id,
+                date=played_at,
+                context_uri=context_uri,
+            )
+        )
+        added += 1
+    logger.info(f"Added {added} new plays from {user}")
+    db.commit()
