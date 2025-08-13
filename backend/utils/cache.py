@@ -1,108 +1,153 @@
 import asyncio
-import hashlib
-from functools import wraps
-from typing import Callable
-
-import diskcache as dc
-
+import datetime
+import json
 import logging
+import os
+import re
+from functools import wraps
+from pathlib import Path
+from typing import Callable, Any
 
 logger = logging.getLogger("lykd.cache")
 
 
-def disk_cache(
-    cache_dir: str = "./cache/default", namespace: str = "", enable: bool = True
-):
-    """
-    Decorator that caches function results to disk for unlimited time.
-    Works with both sync and async functions.
-    Cache key is based on function name, arguments, and keyword arguments.
+def _escape_part(part: Any) -> str:
+    """Escape a value to a filesystem-safe path segment."""
+    s = str(part)
+    # Replace path separators and control chars
+    s = s.replace(os.sep, "_")
+    if os.altsep:
+        s = s.replace(os.altsep, "_")
+    # Collapse whitespace to underscores
+    s = re.sub(r"\s+", "_", s)
+    # Remove characters not safe on common filesystems
+    s = re.sub(r"[^A-Za-z0-9._\-=]", "_", s)
+    # Avoid empty names
+    s = s or "_"
+    # Limit segment length to avoid extremely long filenames
+    return s[:128]
 
-    Args:
-        cache_dir: Directory where cache files will be stored
-        namespace: Optional namespace to separate different caches
-        enable: Whether caching is enabled. If False, function is called directly without caching
-    """
 
+def _json_default(o: Any):
+    # Fallback conversions for non-JSON-serializable objects
+    if isinstance(o, datetime.date):
+        return o.strftime("%Y-%m-%d")
+    if isinstance(o, datetime.datetime):
+        return (
+            o.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+            if o.tzinfo
+            else o.strftime("%Y-%m-%dT%H:%M:%S")
+        )
+    elif isinstance(o, datetime.time):
+        return o.isoformat()
+    elif isinstance(o, set):
+        return list(o)
+    elif isinstance(o, bytes):
+        try:
+            return o.decode("utf-8")
+        except Exception:
+            return list(o)
+    elif hasattr(o, "dict") and callable(getattr(o, "dict")):
+        return o.dict()
+    elif hasattr(o, "__dict__"):
+        return {k: v for k, v in o.__dict__.items() if not k.startswith("__")}
+    return str(o)
+
+
+def _read_json(path: Path):
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return None
+    except Exception as e:
+        logger.debug(f"Failed reading cache file {path}: {e}")
+        return None
+
+
+def _write_json(path: Path, data: Any):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    with tmp.open("w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, default=_json_default)
+    os.replace(tmp, path)
+
+
+def disk_cache(cache_dir: str = "./cache", namespace: str = "", enable: bool = True):
     def decorator(func: Callable) -> Callable:
         # If caching is disabled, return the original function
         if not enable:
             return func
 
-        cache = dc.Cache(cache_dir)
         is_async = asyncio.iscoroutinefunction(func)
 
-        def _create_cache_key(*args, **kwargs) -> str:
-            """Create a cache key based on function name and parameters"""
-            # Convert complex objects to string representations for hashing
-            args_str = []
+        def _build_key_parts(*args, **kwargs) -> list[str]:
+            """Create ordered key parts from args and kwargs, skipping 'self'."""
+            parts: list[str] = []
+            if namespace:
+                parts.append(str(namespace))
+
+            # Positional args: skip instance (self) for methods
             for i, arg in enumerate(args):
-                # Skip 'self' parameter for instance methods (first argument)
                 if i == 0 and hasattr(arg, "__dict__") and hasattr(arg, func.__name__):
-                    continue  # Skip the instance object
+                    continue
+                parts.append(str(arg))
 
-                if hasattr(arg, "__dict__"):
-                    # For objects, use a string representation
-                    arg_str = str(arg)
-                    args_str.append(arg_str)
-                else:
-                    args_str.append(str(arg))
+            # Keyword args in stable order
+            for key in sorted(kwargs.keys()):
+                parts.append(f"{key}={kwargs[key]}")
 
-            kwargs_str = []
-            for key, value in sorted(kwargs.items()):
-                if hasattr(value, "__dict__"):
-                    value_str = str(value)
-                    kwargs_str.append(f"{key}={value_str}")
-                else:
-                    kwargs_str.append(f"{key}={str(value)}")
+            return parts
 
-            # Create cache key from function name, namespace, args and kwargs
-            key_parts = [namespace, func.__name__] + args_str + kwargs_str
-            key_string = ":".join(filter(None, key_parts))
+        def _path_for(*args, **kwargs) -> Path:
+            key_parts = [_escape_part(p) for p in _build_key_parts(*args, **kwargs)]
+            base = Path(cache_dir) / _escape_part(func.__name__)
+            if not key_parts:
+                # No parameters: single file under function dir
+                return base / "no_args.json"
+            # First key part becomes a directory; remaining parts become the filename
+            first, rest = key_parts[0], key_parts[1:]
+            filename = ("__".join(rest) if rest else "data") + ".json"
+            return base / first / filename
 
-            # Hash the key to avoid filesystem issues with long/special characters
-            return hashlib.sha256(key_string.encode()).hexdigest()
+        async def _async_get_or_set(*args, **kwargs):
+            path = _path_for(*args, **kwargs)
+            cached = await asyncio.to_thread(_read_json, path)
+            if cached is not None:
+                return cached
+
+            result = await func(*args, **kwargs)
+            try:
+                await asyncio.to_thread(_write_json, path, result)
+            except Exception as e:
+                logger.error(f"Failed writing cache file {path}: {e}")
+            return result
+
+        def _sync_get_or_set(*args, **kwargs):
+            path = _path_for(*args, **kwargs)
+            cached = _read_json(path)
+            if cached is not None:
+                return cached
+
+            result = func(*args, **kwargs)
+            try:
+                _write_json(path, result)
+            except Exception as e:
+                logger.error(f"Failed writing cache file {path}: {e}")
+            return result
 
         if is_async:
 
             @wraps(func)
             async def async_wrapper(*args, **kwargs):
-                cache_key = _create_cache_key(*args, **kwargs)
-
-                # Try to get cached result
-                cached_result = cache.get(cache_key)
-                if cached_result is not None:
-                    logger.debug(f"Cache hit for {func.__name__}: {cache_key[:16]}...")
-                    return cached_result
-
-                logger.debug(f"Cache miss for {func.__name__}: {cache_key[:16]}...")
-
-                # Execute function and cache result
-                result = await func(*args, **kwargs)
-                cache.set(cache_key, result)
-
-                return result
+                return await _async_get_or_set(*args, **kwargs)
 
             return async_wrapper
         else:
 
             @wraps(func)
             def sync_wrapper(*args, **kwargs):
-                cache_key = _create_cache_key(*args, **kwargs)
-
-                # Try to get cached result
-                cached_result = cache.get(cache_key)
-                if cached_result is not None:
-                    logger.debug(f"Cache hit for {func.__name__}: {cache_key[:16]}...")
-                    return cached_result
-
-                logger.debug(f"Cache miss for {func.__name__}: {cache_key[:16]}...")
-
-                # Execute function and cache result
-                result = func(*args, **kwargs)
-                cache.set(cache_key, result)
-
-                return result
+                return _sync_get_or_set(*args, **kwargs)
 
             return sync_wrapper
 
