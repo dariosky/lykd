@@ -394,8 +394,9 @@ class Spotify:
             for tracks in reverse_block_chunks(tracks_to_remove, 100):
                 payload = {"tracks": [{"uri": get_uri(t)} for t in tracks]}
 
-                remove_response = await self.client.delete(
-                    url,
+                remove_response = await self.client.request(
+                    method="DELETE",
+                    url=url,
                     headers={
                         **self.get_headers(user),
                         "Content-Type": "application/json",

@@ -110,8 +110,8 @@ def update_playlist_db(
     if tracks_to_remove:
         db.exec(
             delete(PlaylistTrack).where(
-                playlist_id == playlist_id,
-                Like.track_id.in_(list(tracks_to_remove)),
+                PlaylistTrack.playlist_id == playlist_id,
+                PlaylistTrack.track_id.in_(tuple(tracks_to_remove)),
             )
         )
 
@@ -125,6 +125,6 @@ def update_likes_db(
         db.exec(
             delete(Like).where(
                 Like.user_id == user.id,
-                Like.track_id.in_(list(tracks_to_remove)),
+                Like.track_id.in_(tuple(tracks_to_remove)),
             )
         )
