@@ -9,6 +9,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  username?: string | null;
   picture: string;
   join_date: string;
   is_admin: boolean;
@@ -37,6 +38,23 @@ export const apiService = {
     });
     if (!response.ok) {
       throw new Error(`Failed to get user info: ${response.status}`);
+    }
+    return response.json();
+  },
+
+  // Update username
+  updateUsername: async (username: string): Promise<UserResponse> => {
+    const response = await fetch("/api/user/username", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ username }),
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Failed to update username: ${response.status} ${errorText}`,
+      );
     }
     return response.json();
   },

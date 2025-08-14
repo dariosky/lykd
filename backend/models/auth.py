@@ -12,6 +12,7 @@ class User(SQLModel, CamelModel, table=True):
     id: str = Field(primary_key=True)
     name: str
     email: str = Field(unique=True, index=True)
+    username: str | None = Field(default=None, index=True, unique=True, nullable=True)
     picture: str | None = None
     tokens: Dict[str, Any] | None = Field(default_factory=dict, sa_column=Column(JSON))
     join_date: datetime.datetime = Field(

@@ -42,9 +42,9 @@ function Layout({ children }: LayoutProps) {
     logoutMutation.mutate();
   };
 
-  const handleServicesClick = () => {
+  const handleSettingsClick = () => {
     setIsDropdownOpen(false);
-    navigate("/services");
+    navigate("/settings");
   };
 
   const handleHomeClick = () => {
@@ -125,7 +125,7 @@ function Layout({ children }: LayoutProps) {
                   <div className="dropdown-divider"></div>
                   <button
                     className="dropdown-item"
-                    onClick={handleServicesClick}
+                    onClick={handleSettingsClick}
                   >
                     <svg
                       width="16"
@@ -133,9 +133,9 @@ function Layout({ children }: LayoutProps) {
                       viewBox="0 0 24 24"
                       fill="currentColor"
                     >
-                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                      <path d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.028 7.028 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.58.22-1.13.52-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.75 8.84a.5.5 0 0 0 .12.64l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.14.24.43.34.68.22l2.39-.96c.5.41 1.05.72 1.63.94l.36 2.54c.06.25.27.42.5.42h3.84c.25 0 .46-.17.5-.42l.36-2.54c.58-.22 1.13-.52 1.63-.94l2.39.96c.25.12.54.02.68-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2z" />
                     </svg>
-                    Services
+                    Settings
                   </button>
                   <button
                     className="dropdown-item logout"

@@ -4,9 +4,9 @@ import tomllib
 from pathlib import Path
 
 from brotli_asgi import BrotliMiddleware
-from fastapi import FastAPI, Query, Depends, Request
+from fastapi import FastAPI, Query, Depends, Request, HTTPException
 from fastapi.responses import RedirectResponse
-from sqlmodel import Session
+from sqlmodel import Session, select
 from starlette.middleware import Middleware
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -67,6 +67,19 @@ def get_current_user(
     return session.get(User, user_id)
 
 
+def generate_unique_username(base: str, session: Session) -> str:
+    """Generate a unique username based on base, appending #<n> starting from 2 if needed."""
+    base = (base or "").strip()
+    if not base:
+        base = "user"
+    candidate = base
+    suffix = 2
+    while session.exec(select(User).where(User.username == candidate)).first():
+        candidate = f"{base}#{suffix}"
+        suffix += 1
+    return candidate
+
+
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application"""
     update_database()
@@ -101,6 +114,7 @@ def create_app() -> FastAPI:
                 "id": current_user.id,
                 "name": current_user.name,
                 "email": current_user.email,
+                "username": current_user.username,
                 "picture": current_user.picture,
                 "join_date": current_user.join_date.isoformat(),
                 "is_admin": current_user.is_admin,
@@ -157,11 +171,19 @@ def create_app() -> FastAPI:
                 session.add(existing_user)
                 user = existing_user
             else:
-                # Create new user
+                # Create new user with unique username
+                base_username = (
+                    (user_info.get("display_name") or "").strip()
+                    or (user_info.get("email") or "").split("@")[0]
+                    or user_info["id"]
+                )
+                unique_username = generate_unique_username(base_username, session)
+
                 user = User(
                     id=user_info["id"],
                     name=user_info["display_name"] or user_info["id"],
                     email=user_info["email"],
+                    username=unique_username,
                     picture=user_info["images"][0]["url"]
                     if user_info.get("images")
                     else "",
@@ -197,5 +219,57 @@ def create_app() -> FastAPI:
                 url=f"{settings.BASE_URL}/error?message={error_message}",
                 status_code=302,
             )
+
+    # New endpoint to set/update the user's username
+    from pydantic import BaseModel
+
+    class UsernameUpdate(BaseModel):
+        username: str
+
+    @app.post("/user/username")
+    async def set_username(
+        payload: UsernameUpdate,
+        request: Request,
+        session: Session = Depends(get_session),
+        current_user: User | None = Depends(get_current_user),
+    ):
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+
+        desired = (payload.username or "").strip()
+        if not desired:
+            raise HTTPException(status_code=400, detail="Username cannot be empty")
+
+        # Basic length guard
+        if len(desired) > 40:
+            raise HTTPException(status_code=400, detail="Username too long")
+
+        # Ensure uniqueness (simple equality check)
+        existing = session.exec(select(User).where(User.username == desired)).first()
+
+        if existing and existing.id != current_user.id:
+            raise HTTPException(status_code=409, detail="Username already taken")
+
+        # Persist
+        db_user = session.get(User, current_user.id)
+        if not db_user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        db_user.username = desired
+        session.add(db_user)
+        session.commit()
+        session.refresh(db_user)
+
+        return {
+            "user": {
+                "id": db_user.id,
+                "name": db_user.name,
+                "email": db_user.email,
+                "username": db_user.username,
+                "picture": db_user.picture,
+                "join_date": db_user.join_date.isoformat(),
+                "is_admin": db_user.is_admin,
+            }
+        }
 
     return app
