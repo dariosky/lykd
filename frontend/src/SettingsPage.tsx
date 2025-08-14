@@ -156,7 +156,7 @@ function SettingsPage() {
                     </button>
                     {savedUsername && (
                       <Link to={profilePath} className="btn-secondary">
-                        View public profile
+                        🌎 View public profile
                       </Link>
                     )}
                   </div>

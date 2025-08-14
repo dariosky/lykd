@@ -52,6 +52,109 @@ def copy_table_data(source_cursor, dest_cursor, source_table, dest_table):
     print(f"  Copied {len(rows)} rows to {dest_table} (affected: {rows_affected})")
 
 
+def generate_unique_username(base, cursor):
+    """Generate a unique username by checking against existing usernames in the database"""
+    base = (base or "").strip()
+    if not base:
+        base = "user"
+
+    candidate = base
+    suffix = 2
+
+    while True:
+        cursor.execute("SELECT 1 FROM users WHERE username = ? LIMIT 1", (candidate,))
+        if not cursor.fetchone():
+            break
+        candidate = f"{base}#{suffix}"
+        suffix += 1
+
+    return candidate
+
+
+def populate_username(dest_cursor):
+    """Populate username field for users who don't have one using the same logic as Spotify route"""
+    print("\nPopulating usernames for users without them...")
+
+    # Check if users table exists
+    dest_cursor.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='users'"
+    )
+    if not dest_cursor.fetchone():
+        print("  Users table not found, skipping username population")
+        return
+
+    # Find users without usernames
+    dest_cursor.execute(
+        "SELECT id, name, email FROM users WHERE username IS NULL OR username = ''"
+    )
+    users_without_username = dest_cursor.fetchall()
+
+    if not users_without_username:
+        print("  All users already have usernames")
+        return
+
+    print(f"  Found {len(users_without_username)} users without usernames")
+
+    updated_count = 0
+    for user_id, name, email in users_without_username:
+        # Apply the same logic as in the Spotify route
+        base_username = (
+            (name or "").strip() or (email or "").split("@")[0]
+            if email
+            else "" or user_id
+        )
+
+        unique_username = generate_unique_username(base_username, dest_cursor)
+
+        # Update the user with the new username
+        dest_cursor.execute(
+            "UPDATE users SET username = ? WHERE id = ?", (unique_username, user_id)
+        )
+        updated_count += 1
+        print(f"    Updated user {user_id} with username: {unique_username}")
+
+    print(f"  Successfully populated usernames for {updated_count} users")
+
+
+def deduplicate_plays(dest_cursor):
+    """Remove duplicate records from plays table based on user_id, track_id and date"""
+    print("\nDeduplicating plays table...")
+
+    # First, check if plays table exists
+    dest_cursor.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='plays'"
+    )
+    if not dest_cursor.fetchone():
+        print("  Plays table not found, skipping deduplication")
+        return
+
+    # Count total records before deduplication
+    dest_cursor.execute("SELECT COUNT(*) FROM plays")
+    total_before = dest_cursor.fetchone()[0]
+    print(f"  Total plays before deduplication: {total_before}")
+
+    # Find duplicates based on user_id, track_id, and date (treating datetime variations as same)
+    # We'll keep the record with the minimum rowid (oldest record) for each group
+    dedup_query = """
+        DELETE FROM plays
+        WHERE rowid NOT IN (
+            SELECT MIN(rowid)
+            FROM plays
+            GROUP BY user_id, track_id, DATE(date)
+        )
+    """
+
+    dest_cursor.execute(dedup_query)
+    deleted_count = dest_cursor.rowcount
+
+    # Count records after deduplication
+    dest_cursor.execute("SELECT COUNT(*) FROM plays")
+    total_after = dest_cursor.fetchone()[0]
+
+    print(f"  Deleted {deleted_count} duplicate records")
+    print(f"  Total plays after deduplication: {total_after}")
+
+
 def main():
     script_dir = settings.BACKEND_DIR
     source_db = script_dir / "spotlike.sqlite"
@@ -113,6 +216,12 @@ def main():
                     f"Warning: Source table '{source_table}' exists but destination table '{dest_table}' not found"
                 )
             # Skip if source table doesn't exist (it's expected for some mappings)
+
+        # Populate usernames for users without them
+        populate_username(dest_cursor)
+
+        # Deduplicate plays after migration
+        deduplicate_plays(dest_cursor)
 
         # Commit all changes
         dest_conn.commit()
