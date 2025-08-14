@@ -3,21 +3,16 @@ import os
 import tomllib
 from pathlib import Path
 
+import settings
 from brotli_asgi import BrotliMiddleware
 from fastapi import FastAPI
+
+from routes.auth_route import router as auth_router
+from routes.public_route import router as public_router
+from routes.spotify_route import router as spotify_router
+from settings import PROJECT_PATH
 from starlette.middleware import Middleware
 from starlette.middleware.sessions import SessionMiddleware
-
-import settings
-from settings import PROJECT_PATH
-
-# Routers and shared deps
-from routes.auth_route import router as auth_router
-from routes.spotify_route import router as spotify_router
-from routes.deps import get_current_user as get_current_user  # re-export for tests
-from routes.deps import (
-    get_current_user_id as get_current_user_id,
-)  # re-export for tests
 
 logger = logging.getLogger("lykd.main")
 
@@ -68,5 +63,6 @@ def create_app() -> FastAPI:
     # Mount routers
     app.include_router(auth_router)
     app.include_router(spotify_router)
+    app.include_router(public_router)
 
     return app

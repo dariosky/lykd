@@ -128,7 +128,7 @@ class TestSpotifyOAuthIntegration:
         assert response.json()["user"] is None
 
         # Mock the get_current_user dependency to return our test user
-        from app import get_current_user
+        from routes.deps import get_current_user
 
         test_app.dependency_overrides[get_current_user] = lambda: test_user
 
@@ -150,7 +150,7 @@ class TestDatabaseIntegration:
 
     def test_user_persistence_across_requests(self, client, test_user, test_app):
         """Test that user data persists correctly across requests."""
-        from app import get_current_user
+        from routes.deps import get_current_user
 
         test_app.dependency_overrides[get_current_user] = lambda: test_user
 

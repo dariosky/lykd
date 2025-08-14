@@ -189,3 +189,73 @@
   color: #ff6b6b;
   font-size: 0.9rem;
 }
+
+/* Username input with prefix */
+.input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.input-prefix {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 0.6rem 0.7rem;
+  color: #bbb;
+  font-weight: 600;
+}
+
+.input-with-prefix {
+  flex: 1;
+}
+
+.settings-hint {
+  color: #bbb;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.settings-url {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.35rem;
+}
+
+.link {
+  color: #9dc1ff;
+  text-decoration: none;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: #ddd;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+}
+
+.btn-ghost:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 0.45rem 0.75rem;
+  text-decoration: none;
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.15);
+}

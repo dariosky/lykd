@@ -25,3 +25,10 @@ dist-ssr
 
 # Testing
 coverage
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Emitted Vite config artifacts
+vite.config.js
+vite.config.d.ts

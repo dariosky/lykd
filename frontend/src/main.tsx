@@ -11,6 +11,7 @@ import {
 import App from "./App";
 import ErrorPage from "./ErrorPage";
 import SettingsPage from "./SettingsPage";
+import PublicProfilePage from "./PublicProfilePage";
 import "./index.css";
 
 // Create a client
@@ -45,6 +46,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             path="/services"
             element={<Navigate to="/settings" replace />}
           />
+          <Route path="/user/:username" element={<PublicProfilePage />} />
           <Route path="/error" element={<ErrorPageWrapper />} />
         </Routes>
       </BrowserRouter>

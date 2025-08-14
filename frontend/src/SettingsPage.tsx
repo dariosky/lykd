@@ -24,12 +24,16 @@ function SettingsPage() {
   const [username, setUsername] = React.useState("");
   const [message, setMessage] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [copied, setCopied] = React.useState(false);
 
   React.useEffect(() => {
     if (currentUser) {
       setUsername(currentUser.username ?? "");
     }
   }, [currentUser]);
+
+  // Use saved username for link/copy so it only changes after save
+  const savedUsername = currentUser?.username ?? "";
 
   const updateUsernameMutation = useMutation({
     mutationFn: (u: string) => apiService.updateUsername(u),
@@ -54,6 +58,22 @@ function SettingsPage() {
   const onSaveUsername = (e: React.FormEvent) => {
     e.preventDefault();
     updateUsernameMutation.mutate(username.trim());
+  };
+
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const profilePath = savedUsername
+    ? `/user/${savedUsername}`
+    : "/user/yourname";
+  const profileUrl = `${origin}${profilePath}`;
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(`${origin}/user/${savedUsername}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (_) {
+      // ignore
+    }
   };
 
   if (isUserLoading) {
@@ -106,15 +126,41 @@ function SettingsPage() {
                 <label htmlFor="username" className="settings-label">
                   Profile name
                 </label>
-                <input
-                  id="username"
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="settings-input"
-                  placeholder="Choose a profile name"
-                  maxLength={40}
-                />
+                <div className="input-row">
+                  <span className="input-prefix">@</span>
+                  <input
+                    id="username"
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="settings-input input-with-prefix"
+                    placeholder="yourname"
+                    maxLength={40}
+                    autoComplete="off"
+                  />
+                </div>
+                <div className="settings-hint">
+                  Your public profile link:
+                  <div className="settings-url">
+                    <a href={profilePath} className="link" rel="noreferrer">
+                      {profileUrl}
+                    </a>
+                    <button
+                      type="button"
+                      className="btn-ghost"
+                      onClick={handleCopy}
+                      disabled={!savedUsername}
+                      aria-label="Copy profile link"
+                    >
+                      {copied ? "Copied" : "Copy"}
+                    </button>
+                    {savedUsername && (
+                      <Link to={profilePath} className="btn-secondary">
+                        View public profile
+                      </Link>
+                    )}
+                  </div>
+                </div>
               </div>
               <div className="settings-actions">
                 <button

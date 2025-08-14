@@ -24,7 +24,7 @@ class TestAppEndpoints:
     def test_get_current_user_info_authenticated(self, client, test_user, test_app):
         """Test get current user info when authenticated."""
         # Mock the get_current_user dependency to return our test user
-        from app import get_current_user
+        from routes.deps import get_current_user
 
         test_app.dependency_overrides[get_current_user] = lambda: test_user
 
@@ -182,7 +182,7 @@ class TestUtilityFunctions:
 
     def test_get_current_user_id_with_session(self, client):
         """Test get_current_user_id with valid session."""
-        from app import get_current_user_id
+        from routes.deps import get_current_user_id
 
         # Create a mock request with session
         mock_request = Mock()
@@ -193,7 +193,7 @@ class TestUtilityFunctions:
 
     def test_get_current_user_id_without_session(self):
         """Test get_current_user_id without session."""
-        from app import get_current_user_id
+        from routes.deps import get_current_user_id
 
         mock_request = Mock()
         mock_request.session = {}
@@ -203,7 +203,7 @@ class TestUtilityFunctions:
 
     def test_get_current_user_with_valid_user(self, test_session, test_user):
         """Test get_current_user with valid user ID."""
-        from app import get_current_user
+        from routes.deps import get_current_user
 
         mock_request = Mock()
         mock_request.session = {"user_id": test_user.id}
@@ -214,7 +214,7 @@ class TestUtilityFunctions:
 
     def test_get_current_user_with_invalid_user(self, test_session):
         """Test get_current_user with invalid user ID."""
-        from app import get_current_user
+        from routes.deps import get_current_user
 
         mock_request = Mock()
         mock_request.session = {"user_id": "nonexistent_user"}
@@ -224,7 +224,7 @@ class TestUtilityFunctions:
 
     def test_get_current_user_without_session(self, test_session):
         """Test get_current_user without session."""
-        from app import get_current_user
+        from routes.deps import get_current_user
 
         mock_request = Mock()
         mock_request.session = {}
