@@ -18,6 +18,18 @@ repos:
         language: system
         files: ^frontend/.*\.(js|jsx|ts|tsx|json|css|html)$
         pass_filenames: false
+      - id: backend-tests
+        name: backend tests
+        entry: bash -c 'cd backend && python -m pytest'
+        language: system
+        files: ^backend/
+        pass_filenames: false
+      - id: frontend-tests
+        name: frontend tests
+        entry: bash -c 'cd frontend && npm test -- --run'
+        language: system
+        files: ^frontend/
+        pass_filenames: false
   - repo: https://github.com/PyCQA/bandit
     rev: '1.8.6'
     hooks:
