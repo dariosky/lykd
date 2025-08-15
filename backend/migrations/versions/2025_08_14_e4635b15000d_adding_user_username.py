@@ -13,8 +13,7 @@ import sqlalchemy as sa
 
 # Use ORM to backfill
 from sqlmodel import Session, select
-from models.auth import User
-
+from models.auth import User, populate_username
 
 # revision identifiers, used by Alembic.
 revision = "e4635b15000d"
@@ -37,27 +36,11 @@ def upgrade() -> None:
 
     # Backfill usernames using ORM
     with Session(op.get_bind()) as session:
-        # Collect existing usernames to ensure uniqueness within this run
-        used: set[str] = set(
-            u.username for u in session.exec(select(User)).all() if u.username
-        )
-
-        users = session.exec(select(User)).all()
+        users = session.exec(
+            select(User).where((User.username.is_(None)) | (User.username == ""))
+        ).all()
         for user in users:
-            if user.username:
-                used.add(user.username)
-                continue
-
-            base = (user.name or "").strip() or (user.email or "").strip() or user.id
-            candidate = base
-            suffix = 2
-            while candidate in used:
-                candidate = f"{base}#{suffix}"
-                suffix += 1
-
-            user.username = candidate
-            used.add(candidate)
-            session.add(user)
+            populate_username(session, user)
 
         session.commit()
 

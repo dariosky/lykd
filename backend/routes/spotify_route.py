@@ -3,11 +3,10 @@ from fastapi.responses import RedirectResponse
 from sqlmodel import Session
 
 import settings
-from models.auth import User
+from models.auth import User, populate_username
 from models.common import get_session
 from services import Spotify
 from services.slack import slack
-from .deps import generate_unique_username
 
 router = APIRouter()
 spotify = Spotify()
@@ -48,28 +47,14 @@ async def spotify_callback(
             )
             # If username not set (legacy), assign one now
             if not existing_user.username:
-                base_username = (
-                    (user_info.get("display_name") or "").strip()
-                    or (user_info.get("email") or "").split("@")[0]
-                    or user_info["id"]
-                )
-                existing_user.username = generate_unique_username(
-                    base_username, session
-                )
+                populate_username(session, existing_user)
             session.add(existing_user)
             user = existing_user
         else:
-            base_username = (
-                (user_info.get("display_name") or "").strip()
-                or (user_info.get("email") or "").split("@")[0]
-                or user_info["id"]
-            )
-            unique_username = generate_unique_username(base_username, session)
             user = User(
                 id=user_info["id"],
                 name=user_info["display_name"] or user_info["id"],
                 email=user_info["email"],
-                username=unique_username,
                 picture=user_info["images"][0]["url"]
                 if user_info.get("images")
                 else "",
@@ -80,6 +65,7 @@ async def spotify_callback(
                     "scope": token_data.get("scope"),
                 },
             )
+            populate_username(session, user)
             session.add(user)
             slack.send_message(f"🐣New user connected to Spotify: {user.email}")
 
