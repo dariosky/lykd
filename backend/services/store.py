@@ -1,6 +1,7 @@
-from sqlmodel import Session, delete
+from sqlmodel import Session, delete, select
 
 from models.auth import User
+from models.common import get_db
 from models.music import (
     Artist,
     Album,
@@ -10,6 +11,7 @@ from models.music import (
     Playlist,
     Like,
     PlaylistTrack,
+    Play,
 )
 import logging
 
@@ -23,49 +25,67 @@ def store_track(track, db_session: Session):
     artists = []
     for artist_data in track.get("artists", []):
         # Create artist instance and merge (upsert)
-        artist = Artist(
-            id=artist_data["id"],
-            name=artist_data["name"],
-            picture=artist_data.get("picture"),
-            uri=artist_data.get("uri"),
-        )
-        merged_artist = db_session.merge(artist)
-        artists.append(merged_artist)
+        try:
+            artist = Artist(
+                id=artist_data["id"],
+                name=artist_data["name"],
+                picture=artist_data.get("picture"),
+                uri=artist_data.get("uri"),
+            )
+            merged_artist = db_session.merge(artist)
+            artists.append(merged_artist)
+        except Exception as e:
+            logger.error(f"Error storing Artist: {e} - {artist_data}")
 
     album = None
     if track.get("album"):
         album_data = track["album"]
 
         # Create album instance and merge (upsert)
-        album = Album(
-            id=album_data["id"],
-            name=album_data["name"],
-            release_date=parse_date(album_data["release_date"]).date()
-            if album_data.get("release_date")
-            else None,
-            release_date_precision=album_data.get("release_date_precision"),
-            picture=album_data["images"][0]["url"]
-            if album_data.get("images")
-            else None,
-            uri=album_data.get("uri"),
-        )
-        album = db_session.merge(album)
+        try:
+            try:
+                release_date = (
+                    parse_date(album_data["release_date"]).date()
+                    if album_data.get("release_date")
+                    else None
+                )
+            except Exception:
+                logger.error(
+                    f"Error parsing album release date: {album_data['release_date']}"
+                )
+                release_date = None
+            album = Album(
+                id=album_data["id"],
+                name=album_data["name"],
+                release_date=release_date,
+                release_date_precision=album_data.get("release_date_precision"),
+                picture=album_data["images"][0]["url"]
+                if album_data.get("images")
+                else None,
+                uri=album_data.get("uri"),
+            )
+            album = db_session.merge(album)
+        except Exception as e:
+            logger.error(f"Error storing album: {e} - {album_data}")
 
         # Handle album artists
         for artist_data in album_data.get("artists", []):
-            # Create/merge album artist
-            album_artist = Artist(
-                id=artist_data["id"],
-                name=artist_data["name"],
-                picture=artist_data.get("picture"),
-            )
-            merged_album_artist = db_session.merge(album_artist)
+            try:
+                # Create/merge album artist
+                album_artist = Artist(
+                    id=artist_data["id"],
+                    name=artist_data["name"],
+                    picture=artist_data.get("picture"),
+                )
+                merged_album_artist = db_session.merge(album_artist)
 
-            # Create/merge album-artist relationship
-            album_artist_relation = AlbumArtist(
-                album_id=album.id, artist_id=merged_album_artist.id
-            )
-            db_session.merge(album_artist_relation)
+                # Create/merge album-artist relationship
+                album_artist_relation = AlbumArtist(
+                    album_id=album.id, artist_id=merged_album_artist.id
+                )
+                db_session.merge(album_artist_relation)
+            except Exception as e:
+                logger.error(f"Error storing album artist: {e} - {artist_data}")
 
     # Create track instance and merge (upsert)
     t = Track(
@@ -128,3 +148,20 @@ def update_likes_db(
                 Like.track_id.in_(tuple(tracks_to_remove)),
             )
         )
+
+
+def find_missing_tracks(session: Session):
+    """Find track IDs that appear in plays but have no corresponding track title"""
+    query = (
+        select(Play.track_id)
+        .select_from(Play)
+        .join(Track, Play.track_id == Track.id, isouter=True)
+        .where(Track.title.is_(None))
+    )
+    missing_ids = set(session.exec(query).all())
+    return missing_ids
+
+
+if __name__ == "__main__":
+    with get_db() as session:
+        print(find_missing_tracks(session))

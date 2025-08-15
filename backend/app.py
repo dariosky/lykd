@@ -14,7 +14,10 @@ from settings import PROJECT_PATH
 from starlette.middleware import Middleware
 from starlette.middleware.sessions import SessionMiddleware
 
+from utils import setup_logs
+
 logger = logging.getLogger("lykd.main")
+setup_logs()
 
 
 def get_version() -> str:

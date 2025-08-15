@@ -296,6 +296,12 @@ function SettingsPage() {
                 <p className="stats-error">Unable to load stats</p>
               )}
             </div>
+
+            <div className="service-footer">
+              <Link to="/spotify/import" className="import-link">
+                Import the full streaming history →
+              </Link>
+            </div>
           </div>
         </div>
       </div>

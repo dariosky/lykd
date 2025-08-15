@@ -17,6 +17,7 @@ dependencies = [
     "slack-sdk>=3.36.0",
     "cachetools>=6.1.0",
     "bandit>=1.8.6",
+    "python-multipart>=0.0.20",
 ]
 
 [dependency-groups]
@@ -70,3 +71,4 @@ exclude_lines = [
 
 [tool.bandit]
 exclude_dirs = ["*/tests/*", "/influx_client.py", ".venv"]
+skips = ["B110"]

@@ -123,11 +123,11 @@ This project builds upon the foundation of Spotlike, a Python script that origin
 LYKD expands on this concept by creating a full web application that makes your music preferences social and shareable.
 
 # TODO:
-- [ ] Create a public user dashboard (with very broad stats)
+- [x] Create a public user dashboard (with very broad stats)
 - [ ] Friend requests and acceptance flow
 - [ ] Do a quick sync of likes often - and a full sync (for deletions) every 24h
 - [ ] Sync playlists
 - [ ] Add a web player
 - [ ] Add suggestions (including songs listened recently)
 - [ ] Add a "like" button
-- [ ] Allow to import full streaming history from [Spotify privacy page](https://www.spotify.com/ca-en/account/privacy/)
+- [x] Allow to import full streaming history from [Spotify privacy page](https://www.spotify.com/ca-en/account/privacy/)

@@ -168,6 +168,22 @@ export const apiService = {
     }
     return response.json();
   },
+
+  // Upload extended streaming history ZIP
+  uploadExtendedHistory: async (file: File): Promise<{ message: string }> => {
+    const form = new FormData();
+    form.append("file", file);
+    const response = await fetch("/api/spotify/import", {
+      method: "POST",
+      credentials: "include",
+      body: form,
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Upload failed: ${response.status} ${text}`);
+    }
+    return response.json();
+  },
 };
 
 // Query keys for consistent cache management

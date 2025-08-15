@@ -1,0 +1,88 @@
+.import-page {
+  min-height: 100vh;
+  background: #0a0a0a;
+  color: #fff;
+  padding: 2rem;
+}
+
+.import-header {
+  max-width: 900px;
+  margin: 0 auto 1.5rem auto;
+}
+
+.import-header h1 {
+  margin: 0 0 0.5rem 0;
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.subtitle {
+  color: #aaa;
+  margin: 0;
+}
+
+.import-content {
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.import-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+}
+
+.import-card h2 {
+  margin: 0 0 0.75rem 0;
+  font-size: 1.2rem;
+}
+
+.import-card p {
+  color: #ccc;
+  line-height: 1.6;
+}
+
+.link {
+  color: #9dc1ff;
+  text-decoration: none;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.upload-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.upload-button {
+  background: #fff;
+  color: #000;
+  border: none;
+  border-radius: 999px;
+  padding: 0.6rem 1rem;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.upload-button:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.success {
+  color: #1db954;
+  margin: 0;
+}
+
+.error {
+  color: #ff6b6b;
+  margin: 0;
+}

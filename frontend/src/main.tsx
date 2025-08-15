@@ -12,6 +12,7 @@ import App from "./App";
 import ErrorPage from "./ErrorPage";
 import SettingsPage from "./SettingsPage";
 import PublicProfilePage from "./PublicProfilePage";
+import SpotifyImportPage from "./SpotifyImportPage";
 import "./index.css";
 
 // Create a client
@@ -42,6 +43,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <Routes>
           <Route path="/" element={<App />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/spotify/import" element={<SpotifyImportPage />} />
           <Route
             path="/services"
             element={<Navigate to="/settings" replace />}

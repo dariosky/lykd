@@ -11,7 +11,7 @@ ALLOWED_DATETIME_FORMATS = (
 )
 
 
-def parse_date(date_str):
+def parse_date(date_str) -> datetime.datetime:
     if isinstance(date_str, str):
         if len(date_str) == 4:
             date_str += "-01-01"  # %Y, let's add Jan01

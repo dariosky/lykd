@@ -3,24 +3,22 @@
 import logging
 import secrets
 from functools import partial
-from typing import Any, Dict
+from typing import Any, AsyncGenerator, Dict
 from urllib.parse import urlencode
 
 import httpx
-from tenacity.wait import wait_base
-
 import settings
 from fastapi import HTTPException
 from models.auth import User
+from services.slack import slack
 from tenacity import (
+    Future,
     before_sleep_log,
     retry,
     stop_after_attempt,
     wait_random,
-    Future,
 )
-
-from services.slack import slack
+from tenacity.wait import wait_base
 from utils import humanize_milliseconds
 from utils.cache import disk_cache
 from utils.chunks import reverse_block_chunks
@@ -432,6 +430,18 @@ class Spotify:
                     raise exception_from_response(
                         add_response, f"Add tracks to {url} failed"
                     )
+
+    async def yield_tracks(self, user: User, tracks: set) -> AsyncGenerator[dict]:
+        """yield tracks from a set of track IDs"""
+        for chunk in reverse_block_chunks(tracks, 50):
+            resp = await self.get_page(
+                url="https://api.spotify.com/v1/tracks",
+                user=user,
+                params={"ids": ",".join(chunk)},
+            )
+            tracks = resp.get("tracks", [])
+            for track_data in tracks:
+                yield track_data
 
 
 def get_uri(track_id: str, track_type: str = "track"):
