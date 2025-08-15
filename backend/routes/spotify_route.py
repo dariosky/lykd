@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import RedirectResponse
-from sqlmodel import Session
+from sqlmodel import Session, select, func
 
 import settings
 from models.auth import User, populate_username
 from models.common import get_session
+from models.music import Like, Play
+from routes.deps import get_current_user
 from services import Spotify
 from services.slack import slack
 
@@ -84,3 +86,30 @@ async def spotify_callback(
             url=f"{settings.BASE_URL}/error?message={error_message}",
             status_code=302,
         )
+
+
+@router.get("/spotify/stats")
+async def get_spotify_stats(
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Get Spotify sync statistics for the current user"""
+
+    total_likes = session.exec(
+        select(func.count(Like.track_id)).where(Like.user_id == current_user.id)
+    ).one()
+
+    # Get the earliest like date (tracking since)
+    earliest_like_date = session.exec(
+        select(func.min(Play.date)).where(Play.user_id == current_user.id)
+    ).one()
+
+    tracking_since = None
+    if earliest_like_date:
+        tracking_since = earliest_like_date.isoformat()
+
+    return {
+        "total_likes_synced": total_likes,
+        "tracking_since": tracking_since,
+        "active": bool(current_user.tokens),
+    }

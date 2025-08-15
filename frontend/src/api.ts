@@ -57,6 +57,12 @@ export interface PublicProfileResponse {
   };
 }
 
+export interface SpotifyStats {
+  total_likes_synced: number;
+  tracking_since: string | null;
+  active: boolean;
+}
+
 // A specific error to represent 404 Not Found responses
 export class NotFoundError extends Error {
   status: number;
@@ -151,6 +157,17 @@ export const apiService = {
     }
     return response.json();
   },
+
+  // Get Spotify stats for current user
+  getSpotifyStats: async (): Promise<SpotifyStats> => {
+    const response = await fetch("/api/spotify/stats", {
+      credentials: "include",
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to get Spotify stats: ${response.status}`);
+    }
+    return response.json();
+  },
 };
 
 // Query keys for consistent cache management
@@ -158,4 +175,5 @@ export const queryKeys = {
   backendStatus: ["backend", "status"] as const,
   currentUser: ["user", "me"] as const,
   spotifyAuth: ["spotify", "auth"] as const,
+  spotifyStats: ["spotify", "stats"] as const,
 };

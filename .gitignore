@@ -4,5 +4,8 @@
 .coverage
 coverage.xml
 /htmlcov
+
+# local testing
 playground.*
+*.zip
 *.sqlite-journal

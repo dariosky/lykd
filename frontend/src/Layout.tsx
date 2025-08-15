@@ -92,13 +92,8 @@ function Layout({ children }: LayoutProps) {
       {currentUser && (
         <div className="user-header">
           <div className="user-header-content">
-            <div className="header-logo">
-              <img
-                src="/logo_dark.svg"
-                alt="LYKD"
-                className="logo"
-                onClick={handleHomeClick}
-              />
+            <div className="header-logo" onClick={handleHomeClick}>
+              <img src="/logo_dark.svg" alt="LYKD" className="logo" />
               LYKD
             </div>
             <div className="header-actions">
