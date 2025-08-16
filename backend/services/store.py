@@ -162,6 +162,6 @@ def find_missing_tracks(session: Session):
     return missing_ids
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma no cover
     with get_db() as session:
         print(find_missing_tracks(session))

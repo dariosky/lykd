@@ -16,7 +16,6 @@ logger = logging.getLogger("lykd.fetch")
 @time_it
 async def fetch_likes():
     """Main function to fetch liked songs for all users"""
-    print("Starting to fetch liked songs for all users...")
 
     # Get database session and fetch all users
 
@@ -24,58 +23,33 @@ async def fetch_likes():
         spotify_client = Spotify(db_session=session)
         users = session.exec(select(User)).all()
 
-        print(f"Found {len(users)} users in the database")
-
-        if not users:
-            print(
-                "No users found. Make sure users have been created and have Spotify tokens."
-            )
-            return
+        logger.debug(f"Found {len(users)} users in the database")
 
         # Filter users that have Spotify tokens
-        users_with_tokens = [user for user in users if user.tokens]
+        active_users = [user for user in users if user.tokens]
 
-        if not users_with_tokens:
-            print("No users with Spotify tokens found.")
+        if not active_users:
+            logger.info("No active users found.")
             return
 
-        print(
-            f"Processing {len(users_with_tokens)} users with Spotify tokens concurrently..."
-        )
+        logger.info(f"Processing {len(active_users)} users...")
 
         # Execute all user processing concurrently
-        tasks = [
-            process_user(session, user, spotify_client) for user in users_with_tokens
-        ]
+        tasks = [process_user(session, user, spotify_client) for user in active_users]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Process results and handle any exceptions
-        total_songs = 0
-        successful_users = 0
-
         for i, result in enumerate(results):
             if isinstance(result, Exception):
-                logger.error(
-                    f"Error processing user {users_with_tokens[i].email}: {result}"
-                )
-            else:
-                user_email, song_count = result
-                total_songs += song_count
-                if song_count > 0:
-                    successful_users += 1
-
-        print("\n=== Summary ===")
-        print(f"Total users processed: {len(users_with_tokens)}")
-        print(f"Users with liked songs: {successful_users}")
-        print(f"Total liked songs fetched: {total_songs}")
+                logger.error(f"Error processing user {active_users[i]}: {result}")
 
         # Commit any token updates
         session.commit()
         await spotify_client.close()
 
-    print("\nFinished processing all users.")
+    logger.info("Finished processing all users.")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma no cover
     setup_logs()
     asyncio.run(fetch_likes())

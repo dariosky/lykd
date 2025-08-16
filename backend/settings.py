@@ -20,10 +20,11 @@ SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
 BACKEND_DIR = Path(__file__).parent
 DATABASE_PATH = BACKEND_DIR / "lykd.sqlite"
 DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DATABASE_PATH}")
-
 PROJECT_PATH = BACKEND_DIR.parent
-DEBUG_MODE = parse_bool(os.getenv("DEBUG_MODE", False))
-TESTING_MODE = parse_bool(os.getenv("TESTING_MODE", False))
+
+TESTING_MODE = parse_bool(os.getenv("TESTING_MODE", False))  # don't wait on retries
+CACHE_ENABLED = parse_bool(os.getenv("CACHE_ENABLED", False))
+HTTPS_VERIFY = parse_bool(os.getenv("HTTPS_VERIFY", True))
 
 BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:3000")
 API_URL = os.getenv("API_URL", f"{BASE_URL}/api")

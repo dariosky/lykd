@@ -18,8 +18,8 @@ os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 os.environ["SPOTIFY_CLIENT_ID"] = "test_client_id"
 os.environ["SPOTIFY_CLIENT_SECRET"] = "test_client_secret"
 os.environ["SESSION_SECRET_KEY"] = "test_secret_key"
-os.environ["DEBUG_MODE"] = "False"
 os.environ["TESTING_MODE"] = "True"
+os.environ["CACHE_ENABLED"] = "False"
 os.environ["SLACK_TOKEN"] = ""
 
 

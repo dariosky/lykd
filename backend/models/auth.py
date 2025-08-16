@@ -3,8 +3,11 @@
 import datetime
 import re
 from typing import Dict, Any
+
+from sqlalchemy import func
 from sqlmodel import SQLModel, Field, Column, JSON, Session, select
 from .common import CamelModel
+from .types import UtcAwareDateTime  # adjust import as needed
 
 
 class User(SQLModel, CamelModel, table=True):
@@ -17,9 +20,30 @@ class User(SQLModel, CamelModel, table=True):
     picture: str | None = None
     tokens: Dict[str, Any] | None = Field(default_factory=dict, sa_column=Column(JSON))
     join_date: datetime.datetime = Field(
-        default_factory=lambda: datetime.datetime.now(datetime.UTC)
+        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc),
+        sa_column=Column(UtcAwareDateTime(), nullable=False),
     )
     is_admin: bool = False
+
+    last_like_scan_full: datetime.datetime | None = Field(
+        default=None,
+        sa_column=Column(UtcAwareDateTime(), nullable=True),
+    )
+
+    last_like_scan: datetime.datetime | None = Field(
+        default=None,
+        sa_column=Column(UtcAwareDateTime(), nullable=True),
+    )
+
+    last_history_sync: datetime.datetime | None = Field(
+        default=None,
+        sa_column=Column(UtcAwareDateTime(), nullable=True),
+    )
+
+    updated_at: datetime.datetime | None = Field(
+        default=None,
+        sa_column=Column(UtcAwareDateTime(), onupdate=func.now(), nullable=True),
+    )
 
     def get_access_token(self) -> str:
         return self.tokens.get("access_token") if self.tokens else None

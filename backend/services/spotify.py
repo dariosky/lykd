@@ -139,7 +139,7 @@ class Spotify:
 
         # Initialize reusable HTTP client with connection pooling
         self.client = httpx.AsyncClient(
-            verify=not settings.DEBUG_MODE,
+            verify=settings.HTTPS_VERIFY,
             timeout=30.0,
             limits=httpx.Limits(max_keepalive_connections=5, max_connections=10),
         )
@@ -226,7 +226,7 @@ class Spotify:
     @disk_cache(
         cache_dir=f"{settings.BACKEND_DIR}/.cache/spotify",
         namespace="spotify",
-        enable=settings.DEBUG_MODE,
+        enable=settings.CACHE_ENABLED,
     )
     @spotify_retry()
     async def get_page(
@@ -246,7 +246,7 @@ class Spotify:
         self, *, user: "User", next_page: str | None = None, limit: int = 50
     ) -> Dict[str, Any]:
         url = next_page or "https://api.spotify.com/v1/me/tracks"
-        logger.debug(f"Fetching liked page for {user} - {url}...")
+        logger.debug(f"Fetching liked page for {user} - {url}")
         return await self.get_page(
             url=url,
             user=user,
@@ -257,7 +257,7 @@ class Spotify:
         self, *, user: "User", next_page: str | None = None, limit: int = 50
     ) -> Dict[str, Any]:
         url = next_page or "https://api.spotify.com/v1/me/player/recently-played"
-        logger.debug(f"Fetching recent page for {user} - {url}...")
+        logger.debug(f"Fetching recent page for {user} - {url}")
         return await self.get_page(
             url=url, user=user, params={"limit": limit} if not next_page else None
         )
@@ -266,7 +266,23 @@ class Spotify:
         self, *, user: "User", next_page: str | None = None, limit: int = 50
     ) -> Dict[str, Any]:
         url = next_page or "https://api.spotify.com/v1/me/playlists"
-        logger.debug(f"Fetching playlists page for {user}: {url}")
+        logger.debug(f"Fetching user playlists for {user}: {url}")
+        return await self.get_page(
+            url=url,
+            user=user,
+            params={"limit": limit} if not next_page else None,
+        )
+
+    async def get_playlist_tracks(
+        self,
+        *,
+        playlist_id,
+        user: "User",
+        next_page: str | None = None,
+        limit: int = 50,
+    ):
+        url = next_page or f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks"
+        logger.debug(f"Fetching playlists tracks for {user}: {url}")
         return await self.get_page(
             url=url,
             user=user,
@@ -333,7 +349,7 @@ class Spotify:
             if len(same_name_playlists) > 1:
                 for duplicated_playlist in same_name_playlists[:-1]:
                     playlist_id = duplicated_playlist["id"]
-                    logger.debug(f"Removing duplicated {playlist_id}")
+                    logger.debug(f"Removing duplicated playlist {playlist_id}")
                     await self.delete_playlist(user, playlist_id)
 
         return playlist
