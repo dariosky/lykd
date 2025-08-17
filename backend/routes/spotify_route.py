@@ -1,3 +1,6 @@
+import datetime
+import os
+
 from fastapi import (
     APIRouter,
     Depends,
@@ -14,7 +17,6 @@ import tempfile
 import zipfile
 from pathlib import Path
 import logging
-import os
 
 import settings
 from models.auth import User, populate_username
@@ -115,6 +117,9 @@ async def get_spotify_stats(
     total_likes = session.exec(
         select(func.count(Like.track_id)).where(Like.user_id == current_user.id)
     ).one()
+    total_plays = session.exec(
+        select(func.count(Play.track_id)).where(Play.user_id == current_user.id)
+    ).one()
 
     # Get the earliest like date (tracking since)
     earliest_like_date = session.exec(
@@ -127,9 +132,24 @@ async def get_spotify_stats(
 
     return {
         "total_likes_synced": total_likes,
+        "total_plays_synced": total_plays,
         "tracking_since": tracking_since,
         "active": bool(current_user.tokens),
+        "full_history_sync_wait": get_history_sync_seconds_wait(current_user),
+        "last_full_history_sync": current_user.last_history_sync,
     }
+
+
+def get_history_sync_seconds_wait(current_user: User) -> int:
+    """How long the user should wait before syncing history again."""
+    if not current_user.last_history_sync:
+        return 0
+    # Default to 30 days ago if no sync has been done yet
+    cutoff = current_user.last_history_sync + datetime.timedelta(days=1)
+    now = datetime.datetime.now(datetime.timezone.utc)
+    if now > cutoff:
+        return 0
+    return int((cutoff - now).total_seconds())
 
 
 @router.post("/spotify/import")
@@ -139,11 +159,17 @@ async def import_spotify_extended_history(
         ..., description="ZIP file containing Extended streaming history"
     ),
     current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
 ):
     """Start a background job to import Extended streaming history from a ZIP.
 
     Returns immediately while the job runs in the background.
     """
+    if get_history_sync_seconds_wait(current_user) > 0:
+        raise HTTPException(
+            status_code=429, detail="You need to wait before syncing again"
+        )
+
     if not file.filename:
         raise HTTPException(status_code=400, detail="Missing file")
     # Persist upload to a temp file first
@@ -176,6 +202,11 @@ async def import_spotify_extended_history(
         except Exception:
             pass
         raise HTTPException(status_code=400, detail="Please upload a valid ZIP file")
+
+    # mark the user as having started a history sync
+    current_user.last_history_sync = datetime.datetime.now(datetime.timezone.utc)
+    session.add(current_user)
+    session.commit()
 
     # Schedule background processing
     background_tasks.add_task(process_spotify_history_zip, current_user, tmp_zip)

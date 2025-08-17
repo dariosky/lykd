@@ -106,35 +106,69 @@ export default function PublicProfilePage() {
 
             <section className="card">
               <h2>🎧 Playback Stats</h2>
-              <div className="stats-grid">
-                <div className="stat">
-                  <div className="stat-label">▶️ Total plays</div>
-                  <div className="stat-value">
-                    {formatNumber(data.stats.total_plays)}
+              <div className="stat-row">
+                <div className="stat-item red">
+                  <div className="stat-left">
+                    <span className="stat-icon" aria-hidden>
+                      ❤️
+                    </span>
+                    <span className="stat-label">Liked songs</span>
                   </div>
-                </div>
-                <div className="stat">
-                  <div className="stat-label">❤️ Liked songs</div>
                   <div className="stat-value">
                     {formatNumber(data.stats.total_likes)}
                   </div>
                 </div>
-                <div className="stat">
-                  <div className="stat-label">🕒 Listening time (all time)</div>
+
+                <div className="stat-item green">
+                  <div className="stat-left">
+                    <span className="stat-icon" aria-hidden>
+                      ▶️
+                    </span>
+                    <span className="stat-label">Total plays</span>
+                  </div>
+                  <div className="stat-value">
+                    {formatNumber(data.stats.total_plays)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="stat-row">
+                <div className="stat-item">
+                  <div className="stat-left">
+                    <span className="stat-icon" aria-hidden>
+                      🕒
+                    </span>
+                    <span className="stat-label">
+                      Listening time (all time)
+                    </span>
+                  </div>
                   <div className="stat-value">
                     {formatDurationDHMS(data.stats.total_listening_time_sec)}
                   </div>
                 </div>
-                <div className="stat">
-                  <div className="stat-label">⏳ Listening time (30 days)</div>
+                <div className="stat-item">
+                  <div className="stat-left">
+                    <span className="stat-icon" aria-hidden>
+                      ⏳
+                    </span>
+                    <span className="stat-label">Listening time (30 days)</span>
+                  </div>
                   <div className="stat-value">
                     {formatDurationDHMS(
                       data.stats.listening_time_last_30_days_sec,
                     )}
                   </div>
                 </div>
-                <div className="stat">
-                  <div className="stat-label">📅 Tracking since</div>
+              </div>
+
+              <div className="stat-row">
+                <div className="stat-item">
+                  <div className="stat-left">
+                    <span className="stat-icon" aria-hidden>
+                      📅
+                    </span>
+                    <span className="stat-label">Tracking since</span>
+                  </div>
                   <div className="stat-value">
                     {formatDate(data.stats.tracking_since)}
                   </div>

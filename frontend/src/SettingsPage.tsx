@@ -274,20 +274,44 @@ function SettingsPage() {
             </div>
 
             {/* Spotify Stats - bottom small cards */}
-            <div className="spotify-stats-grid">
+            <div className="stat-grid">
               {isStatsLoading ? (
                 <p className="stats-loading">Loading stats...</p>
               ) : spotifyStats ? (
                 <>
-                  <div className="stat-card">
-                    <div className="stat-card-label">Likes synced</div>
-                    <div className="stat-card-value">
+                  <div className="stat-item red">
+                    <div className="stat-left">
+                      <span className="stat-icon" aria-hidden>
+                        ❤️
+                      </span>
+                      <span className="stat-label">Likes synced</span>
+                    </div>
+                    <div className="stat-value">
                       {spotifyStats.total_likes_synced.toLocaleString()}
                     </div>
                   </div>
-                  <div className="stat-card">
-                    <div className="stat-card-label">Tracking since</div>
-                    <div className="stat-card-value">
+
+                  <div className="stat-item green">
+                    <div className="stat-left">
+                      <span className="stat-icon" aria-hidden>
+                        ▶️
+                      </span>
+                      <span className="stat-label">Plays imported</span>
+                    </div>
+                    <div className="stat-value">
+                      {spotifyStats.total_plays_synced?.toLocaleString?.() ??
+                        "0"}
+                    </div>
+                  </div>
+
+                  <div className="stat-item red">
+                    <div className="stat-left">
+                      <span className="stat-icon" aria-hidden>
+                        📅
+                      </span>
+                      <span className="stat-label">Tracking since</span>
+                    </div>
+                    <div className="stat-value">
                       {formatTrackingSince(spotifyStats.tracking_since)}
                     </div>
                   </div>

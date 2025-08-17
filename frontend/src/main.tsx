@@ -14,6 +14,7 @@ import SettingsPage from "./SettingsPage";
 import PublicProfilePage from "./PublicProfilePage";
 import SpotifyImportPage from "./SpotifyImportPage";
 import "./index.css";
+import "./common.css";
 
 // Create a client
 const queryClient = new QueryClient({

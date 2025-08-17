@@ -59,8 +59,11 @@ export interface PublicProfileResponse {
 
 export interface SpotifyStats {
   total_likes_synced: number;
+  total_plays_synced: number;
   tracking_since: string | null;
   active: boolean;
+  full_history_sync_wait: number; // seconds to wait before extended import is available
+  last_full_history_sync: string | null; // ISO string when user last ran full history import
 }
 
 // A specific error to represent 404 Not Found responses

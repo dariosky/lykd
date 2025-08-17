@@ -52,29 +52,6 @@
   margin: 0 0 0.8rem 0;
 }
 
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
-}
-
-.stat {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  padding: 0.8rem 1rem;
-}
-
-.stat-label {
-  color: #bbb;
-  font-size: 0.85rem;
-}
-
-.stat-value {
-  font-size: 1.1rem;
-  font-weight: 600;
-}
-
 .highlights-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -222,7 +199,7 @@
 }
 
 @media (max-width: 800px) {
-  .stats-grid,
+  .stat-grid,
   .highlights-grid {
     grid-template-columns: 1fr;
   }

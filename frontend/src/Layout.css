@@ -8,6 +8,10 @@
   background: rgba(0, 0, 0, 0.3);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   padding: 1rem;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  backdrop-filter: saturate(150%) blur(6px);
 }
 
 .user-header-content {
