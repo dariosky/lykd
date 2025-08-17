@@ -13,6 +13,7 @@ import ErrorPage from "./ErrorPage";
 import SettingsPage from "./SettingsPage";
 import PublicProfilePage from "./PublicProfilePage";
 import SpotifyImportPage from "./SpotifyImportPage";
+import RecentPlaysPage from "./RecentPlaysPage";
 import "./index.css";
 import "./common.css";
 
@@ -45,6 +46,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route path="/" element={<App />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/spotify/import" element={<SpotifyImportPage />} />
+          <Route path="/recent" element={<RecentPlaysPage />} />
           <Route
             path="/services"
             element={<Navigate to="/settings" replace />}

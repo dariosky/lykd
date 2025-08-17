@@ -1,20 +1,22 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiService, queryKeys, UserResponse } from "./api";
+import { useNavigate } from "react-router-dom";
 import "./Dashboard.css";
+import { RecentActivityWidget } from "./RecentActivity";
 
 function Dashboard() {
-  // Current user query
   const { data: userResponse, isLoading: isUserLoading } = useQuery<
     UserResponse,
     Error
   >({
     queryKey: queryKeys.currentUser,
     queryFn: apiService.getCurrentUser,
-    staleTime: 30 * 1000, // 30 seconds
+    staleTime: 30 * 1000,
     retry: 1,
   });
 
   const currentUser = userResponse?.user;
+  const navigate = useNavigate();
 
   if (isUserLoading) {
     return (
@@ -27,6 +29,8 @@ function Dashboard() {
     );
   }
 
+  const myIdent = currentUser?.username || currentUser?.id || "";
+
   return (
     <div className="dashboard">
       <header className="dashboard-header">
@@ -37,9 +41,17 @@ function Dashboard() {
 
       <main className="dashboard-main">
         <div className="dashboard-grid">
+          {/* My Activity widget */}
           <div className="dashboard-card">
             <div className="card-header">
-              <h2>Recent Activity</h2>
+              <h2
+                className="link"
+                onClick={() =>
+                  navigate(`/recent?user=${encodeURIComponent(myIdent)}`)
+                }
+              >
+                Recent Activity
+              </h2>
               <svg
                 width="24"
                 height="24"
@@ -50,18 +62,23 @@ function Dashboard() {
               </svg>
             </div>
             <div className="card-content">
-              <div className="activity-placeholder">
-                <p>
-                  Your music activity will appear here once you start using the
-                  app.
-                </p>
-              </div>
+              <RecentActivityWidget
+                includeMe={true}
+                filterUser={myIdent}
+                className="compact"
+              />
             </div>
           </div>
 
+          {/* Friends & Network widget */}
           <div className="dashboard-card">
             <div className="card-header">
-              <h2>Friends & Network</h2>
+              <h2
+                className="link"
+                onClick={() => navigate(`/recent?exclude_me=true`)}
+              >
+                Friends & Network
+              </h2>
               <svg
                 width="24"
                 height="24"
@@ -72,14 +89,15 @@ function Dashboard() {
               </svg>
             </div>
             <div className="card-content">
-              <div className="friends-placeholder">
-                <p>
-                  Connect with friends to start sharing music recommendations.
-                </p>
-              </div>
+              <RecentActivityWidget
+                includeMe={false}
+                filterUser={null}
+                className="compact"
+              />
             </div>
           </div>
 
+          {/* Recommendations card unchanged */}
           <div className="dashboard-card">
             <div className="card-header">
               <h2>Recommendations</h2>

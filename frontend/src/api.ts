@@ -92,6 +92,39 @@ export interface PendingRequestsResponse {
   pending: PendingRequestItem[];
 }
 
+// Recent activity
+export interface RecentTrack {
+  id: string;
+  title: string | null;
+  duration: number | null;
+  album?: {
+    id: string;
+    name: string;
+    picture: string | null;
+    release_date: string | null;
+  } | null;
+  artists: string[];
+}
+
+export interface RecentUserRef {
+  id: string;
+  name: string | null;
+  username: string | null;
+  picture: string | null;
+}
+
+export interface RecentItem {
+  user: RecentUserRef;
+  track: RecentTrack;
+  played_at: string;
+  context_uri?: string | null;
+}
+
+export interface RecentResponse {
+  items: RecentItem[];
+  next_before: string | null;
+}
+
 // A specific error to represent 404 Not Found responses
 export class NotFoundError extends Error {
   status: number;
@@ -259,6 +292,28 @@ export const apiService = {
     return response.json();
   },
 
+  // Recent activity
+  getRecent: async (params: {
+    limit?: number;
+    before?: string | null;
+    include_me?: boolean;
+    user?: string | null;
+  }): Promise<RecentResponse> => {
+    const qs = new URLSearchParams();
+    if (params.limit) qs.set("limit", String(params.limit));
+    if (params.before) qs.set("before", params.before);
+    if (params.include_me === false) qs.set("include_me", "false");
+    if (params.user) qs.set("user", params.user);
+    const response = await fetch(`/api/recent?${qs.toString()}`, {
+      credentials: "include",
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Failed to get recent: ${response.status} ${text}`);
+    }
+    return response.json();
+  },
+
   // Get Spotify stats for current user
   getSpotifyStats: async (): Promise<SpotifyStats> => {
     const response = await fetch("/api/spotify/stats", {
@@ -296,4 +351,6 @@ export const queryKeys = {
   friendshipStatus: (username: string) =>
     ["friendship", "status", username] as const,
   pendingRequests: ["friendship", "pending"] as const,
+  recent: (includeMe: boolean, user?: string | null) =>
+    ["recent", includeMe ? "me+friends" : "friends", user ?? null] as const,
 };
