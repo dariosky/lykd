@@ -66,6 +66,32 @@ export interface SpotifyStats {
   last_full_history_sync: string | null; // ISO string when user last ran full history import
 }
 
+// Friendship
+export type FriendshipStatus =
+  | "none"
+  | "self"
+  | "friends"
+  | "pending_outgoing"
+  | "pending_incoming";
+
+export interface FriendshipStatusResponse {
+  status: FriendshipStatus;
+}
+
+export interface PendingRequestItem {
+  user: {
+    id: string;
+    name: string;
+    username: string | null;
+    picture: string | null;
+  };
+  requested_at: string;
+}
+
+export interface PendingRequestsResponse {
+  pending: PendingRequestItem[];
+}
+
 // A specific error to represent 404 Not Found responses
 export class NotFoundError extends Error {
   status: number;
@@ -161,6 +187,78 @@ export const apiService = {
     return response.json();
   },
 
+  // Friendship APIs
+  getFriendshipStatus: async (
+    username: string,
+  ): Promise<FriendshipStatusResponse> => {
+    const response = await fetch(
+      `/api/friendship/status/${encodeURIComponent(username)}`,
+      { credentials: "include" },
+    );
+    if (!response.ok) {
+      throw new Error(`Failed to get friendship status: ${response.status}`);
+    }
+    return response.json();
+  },
+
+  sendFriendRequest: async (
+    username: string,
+  ): Promise<{ friendship: { status: string; requested_at: string } }> => {
+    const response = await fetch(
+      `/api/friendship/request/${encodeURIComponent(username)}`,
+      { method: "POST", credentials: "include" },
+    );
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(
+        `Failed to send friend request: ${response.status} ${text}`,
+      );
+    }
+    return response.json();
+  },
+
+  acceptFriendRequest: async (
+    username: string,
+  ): Promise<{
+    friendship: { status: string; responded_at: string | null };
+  }> => {
+    const response = await fetch(
+      `/api/friendship/accept/${encodeURIComponent(username)}`,
+      { method: "POST", credentials: "include" },
+    );
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Failed to accept: ${response.status} ${text}`);
+    }
+    return response.json();
+  },
+
+  declineFriendRequest: async (
+    username: string,
+  ): Promise<{
+    friendship: { status: string; responded_at: string | null };
+  }> => {
+    const response = await fetch(
+      `/api/friendship/decline/${encodeURIComponent(username)}`,
+      { method: "POST", credentials: "include" },
+    );
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Failed to decline: ${response.status} ${text}`);
+    }
+    return response.json();
+  },
+
+  getPendingRequests: async (): Promise<PendingRequestsResponse> => {
+    const response = await fetch(`/api/friendship/pending`, {
+      credentials: "include",
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to get pending requests: ${response.status}`);
+    }
+    return response.json();
+  },
+
   // Get Spotify stats for current user
   getSpotifyStats: async (): Promise<SpotifyStats> => {
     const response = await fetch("/api/spotify/stats", {
@@ -195,4 +293,7 @@ export const queryKeys = {
   currentUser: ["user", "me"] as const,
   spotifyAuth: ["spotify", "auth"] as const,
   spotifyStats: ["spotify", "stats"] as const,
+  friendshipStatus: (username: string) =>
+    ["friendship", "status", username] as const,
+  pendingRequests: ["friendship", "pending"] as const,
 };

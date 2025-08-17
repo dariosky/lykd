@@ -1,7 +1,12 @@
 import React from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { apiService, queryKeys, UserResponse } from "./api";
+import {
+  apiService,
+  queryKeys,
+  UserResponse,
+  PendingRequestsResponse,
+} from "./api";
 import "./Layout.css";
 
 interface LayoutProps {
@@ -10,7 +15,9 @@ interface LayoutProps {
 
 function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
+  const [isNotifOpen, setIsNotifOpen] = React.useState(false);
 
   // Current user query
   const { data: userResponse, refetch: refetchUser } = useQuery<
@@ -21,6 +28,42 @@ function Layout({ children }: LayoutProps) {
     queryFn: apiService.getCurrentUser,
     staleTime: 30 * 1000, // 30 seconds
     retry: 1, // Don't retry too much for user info
+  });
+
+  const currentUser = userResponse?.user;
+
+  // Pending friendship requests
+  const { data: pendingResp, refetch: refetchPending } = useQuery<
+    PendingRequestsResponse,
+    Error
+  >({
+    queryKey: queryKeys.pendingRequests,
+    queryFn: apiService.getPendingRequests,
+    enabled: !!currentUser,
+    staleTime: 15 * 1000,
+    refetchInterval: 30 * 1000,
+  });
+  const pending = pendingResp?.pending ?? [];
+
+  // Accept / Decline mutations
+  const acceptMutation = useMutation({
+    mutationFn: (username: string) => apiService.acceptFriendRequest(username),
+    onSuccess: (_data, username) => {
+      // refresh lists and status for that user
+      refetchPending();
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.friendshipStatus(username),
+      });
+    },
+  });
+  const declineMutation = useMutation({
+    mutationFn: (username: string) => apiService.declineFriendRequest(username),
+    onSuccess: (_data, username) => {
+      refetchPending();
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.friendshipStatus(username),
+      });
+    },
   });
 
   // Logout mutation
@@ -58,20 +101,23 @@ function Layout({ children }: LayoutProps) {
     }
   };
 
-  // Close dropdown when clicking outside
+  // Close dropdowns when clicking outside
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Element;
       if (!target.closest(".user-dropdown-container")) {
         setIsDropdownOpen(false);
       }
+      if (!target.closest(".notif-dropdown-container")) {
+        setIsNotifOpen(false);
+      }
     };
 
-    if (isDropdownOpen) {
+    if (isDropdownOpen || isNotifOpen) {
       document.addEventListener("click", handleClickOutside);
       return () => document.removeEventListener("click", handleClickOutside);
     }
-  }, [isDropdownOpen]);
+  }, [isDropdownOpen, isNotifOpen]);
 
   // Check for success parameter on mount and refetch user
   React.useEffect(() => {
@@ -84,8 +130,6 @@ function Layout({ children }: LayoutProps) {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, [refetchUser]);
-
-  const currentUser = userResponse?.user;
 
   return (
     <div className="layout">
@@ -106,6 +150,80 @@ function Layout({ children }: LayoutProps) {
                   🌎
                 </button>
               )}
+
+              {/* Notifications bell */}
+              <div className="notif-dropdown-container">
+                {pending.length > 0 && (
+                  <button
+                    className="notif-button"
+                    onClick={() => setIsNotifOpen(!isNotifOpen)}
+                    aria-label="Friend requests"
+                  >
+                    🔔
+                    <span
+                      className="notif-badge"
+                      aria-label={`${pending.length} pending`}
+                    >
+                      {pending.length}
+                    </span>
+                  </button>
+                )}
+                {isNotifOpen && pending.length > 0 && (
+                  <div className="notif-dropdown">
+                    <div className="notif-title">Friend requests</div>
+                    <ul className="notif-list">
+                      {pending.map((p) => (
+                        <li key={p.user.id} className="notif-item">
+                          <div className="notif-user">
+                            {p.user.picture ? (
+                              <img
+                                className="notif-avatar"
+                                src={p.user.picture}
+                                alt={p.user.name}
+                              />
+                            ) : (
+                              <div className="notif-avatar placeholder">👤</div>
+                            )}
+                            <div className="notif-user-meta">
+                              <div className="notif-name">{p.user.name}</div>
+                              {p.user.username && (
+                                <div className="notif-username">
+                                  @{p.user.username}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="notif-actions">
+                            <button
+                              className="btn-accept"
+                              onClick={() =>
+                                acceptMutation.mutate(
+                                  p.user.username ?? p.user.id,
+                                )
+                              }
+                              disabled={acceptMutation.isPending}
+                            >
+                              Accept
+                            </button>
+                            <button
+                              className="btn-decline"
+                              onClick={() =>
+                                declineMutation.mutate(
+                                  p.user.username ?? p.user.id,
+                                )
+                              }
+                              disabled={declineMutation.isPending}
+                            >
+                              Decline
+                            </button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
               <div className="user-dropdown-container">
                 <button
                   className="user-button"

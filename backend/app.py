@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from routes.auth_route import router as auth_router
 from routes.public_route import router as public_router
 from routes.spotify_route import router as spotify_router
+from routes.friendship import router as friendship_router
 from settings import PROJECT_PATH
 from starlette.middleware import Middleware
 from starlette.middleware.sessions import SessionMiddleware
@@ -67,5 +68,6 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(spotify_router)
     app.include_router(public_router)
+    app.include_router(friendship_router, tags=["friendship"])
 
     return app

@@ -1,7 +1,14 @@
 import { useParams, Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Layout from "./Layout";
-import { apiService, PublicProfileResponse, NotFoundError } from "./api";
+import {
+  apiService,
+  PublicProfileResponse,
+  NotFoundError,
+  FriendshipStatusResponse,
+  queryKeys,
+  UserResponse,
+} from "./api";
 import "./PublicProfile.css";
 
 function formatDurationDHMS(totalSec: number): string {
@@ -34,6 +41,7 @@ function formatNumber(n: number): string {
 
 export default function PublicProfilePage() {
   const { username = "" } = useParams();
+  const queryClient = useQueryClient();
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery<
     PublicProfileResponse,
@@ -47,7 +55,92 @@ export default function PublicProfilePage() {
     retry: (_failureCount, err) => !(err instanceof NotFoundError),
   });
 
+  // Current viewer from query (shared with Layout, deduped)
+  const { data: viewerResp } = useQuery<UserResponse, Error>({
+    queryKey: queryKeys.currentUser,
+    queryFn: apiService.getCurrentUser,
+    staleTime: 30_000,
+    retry: 1,
+  });
+  const viewer = viewerResp?.user ?? null;
+
+  // Friendship status query
+  const {
+    data: frStatus,
+    refetch: refetchFrStatus,
+    isFetching: loadingStatus,
+  } = useQuery<FriendshipStatusResponse, Error>({
+    queryKey: queryKeys.friendshipStatus(username),
+    queryFn: () => apiService.getFriendshipStatus(username),
+    enabled: !!username && !!viewer, // only when logged in
+    staleTime: 10_000,
+  });
+
+  // Send request mutation
+  const sendRequestMutation = useMutation({
+    mutationFn: () => apiService.sendFriendRequest(username),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.friendshipStatus(username),
+      });
+      refetchFrStatus();
+      // Also refresh pending list for the other screen if needed
+      queryClient.invalidateQueries({ queryKey: queryKeys.pendingRequests });
+    },
+  });
+
   const isNotFound = isError && error instanceof NotFoundError;
+
+  // Decide button label/state
+  const status = frStatus?.status;
+  const showFriendAction =
+    !!viewer && data && viewer.username !== data.user.username;
+  const friendBtn = (() => {
+    if (!showFriendAction) return null;
+    if (loadingStatus) {
+      return (
+        <button className="btn-primary" disabled>
+          Checking…
+        </button>
+      );
+    }
+    switch (status) {
+      case "friends":
+        return (
+          <button className="btn-primary" disabled>
+            ✓ Friends
+          </button>
+        );
+      case "pending_outgoing":
+        return (
+          <button className="btn-primary" disabled>
+            Request sent
+          </button>
+        );
+      case "pending_incoming":
+        return (
+          <button
+            className="btn-primary"
+            disabled
+            title="Respond from notifications"
+          >
+            Respond pending
+          </button>
+        );
+      case "self":
+        return null;
+      default:
+        return (
+          <button
+            className="btn-primary"
+            onClick={() => sendRequestMutation.mutate()}
+            disabled={sendRequestMutation.isPending}
+          >
+            {sendRequestMutation.isPending ? "Sending…" : "Add friend"}
+          </button>
+        );
+    }
+  })();
 
   return (
     <Layout>
@@ -90,18 +183,33 @@ export default function PublicProfilePage() {
 
         {data && (
           <div className="public-profile-content">
-            <div className="profile-hero">
-              {data.user.picture && (
-                <img
-                  src={data.user.picture}
-                  alt={data.user.name}
-                  className="profile-avatar"
-                />
-              )}
-              <div className="profile-meta">
-                <h1>{data.user.name}</h1>
-                <div className="username">@{data.user.username}</div>
+            <div
+              className="profile-hero"
+              style={{
+                justifyContent: "space-between",
+                gap: "1rem",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "1rem",
+                }}
+              >
+                {data.user.picture && (
+                  <img
+                    src={data.user.picture}
+                    alt={data.user.name}
+                    className="profile-avatar"
+                  />
+                )}
+                <div className="profile-meta">
+                  <h1>{data.user.name}</h1>
+                  <div className="username">@{data.user.username}</div>
+                </div>
               </div>
+              {friendBtn}
             </div>
 
             <section className="card">

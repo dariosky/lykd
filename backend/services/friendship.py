@@ -12,7 +12,7 @@ logger = logging.getLogger("lykd.friendship")
 def request_friendship(
     session: Session, *, requester: User, recipient: User
 ) -> Friendship:
-    if requester == recipient:
+    if requester.id == recipient.id:
         raise ValueError("Cannot friend yourself.")
 
     low, high = Friendship.canonical_pair(requester.id, recipient.id)
@@ -67,7 +67,8 @@ def accept_friendship(
     if not friendship or friendship.status != FriendshipStatus.pending:
         raise ValueError("No pending request to accept.")
 
-    if friendship.requested_by_id == recipient.id:
+    # The original requester cannot accept their own request.
+    if friendship.requested_by_id == requester.id:
         raise PermissionError("Requester cannot accept their own request.")
 
     friendship.status = FriendshipStatus.accepted
