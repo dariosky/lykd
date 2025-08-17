@@ -174,15 +174,13 @@ async def import_spotify_extended_history(
         raise HTTPException(status_code=400, detail="Missing file")
     # Persist upload to a temp file first
     fd, tmp_zip = tempfile.mkstemp(prefix="lykd_spotify_zip_", suffix=".zip")
-    try:
-        with os.fdopen(fd, "wb") as out:
-            while True:
-                chunk = await file.read(1024 * 1024)
-                if not chunk:
-                    break
-                out.write(chunk)
-    finally:
-        await file.close()
+    with os.fdopen(fd, "wb") as out:
+        while True:
+            chunk = await file.read(1024 * 1024)
+            if not chunk:
+                break
+            out.write(chunk)
+    await file.close()
 
     # Validate ZIP signature before scheduling background work
     try:
