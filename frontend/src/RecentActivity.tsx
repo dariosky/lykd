@@ -23,14 +23,20 @@ export function useLocalStorageBoolean(key: string, initial: boolean) {
 
 export function RecentPlayItem({ item }: { item: RecentItem }) {
   const playedAt = new Date(item.played_at);
-  const time = isNaN(playedAt.getTime())
-    ? ""
-    : playedAt.toLocaleString(undefined, {
-        hour: "2-digit",
-        minute: "2-digit",
-        month: "short",
-        day: "2-digit",
-      });
+  const currentYear = new Date().getFullYear();
+  const opts: Intl.DateTimeFormatOptions = {
+    hour: "2-digit",
+    minute: "2-digit",
+    month: "short",
+    day: "2-digit",
+  };
+  if (playedAt.getFullYear() !== currentYear) {
+    opts.year = "numeric";
+  }
+  const time =
+    isNaN(playedAt.getTime()) || playedAt.getFullYear() === 0
+      ? ""
+      : playedAt.toLocaleString(undefined, opts);
   const albumPic = item.track.album?.picture ?? null;
   return (
     <li className="recent-item" data-testid="recent-item">
@@ -39,7 +45,8 @@ export function RecentPlayItem({ item }: { item: RecentItem }) {
           <img
             className="recent-avatar"
             src={albumPic}
-            alt={item.track.album?.name ?? ""}
+            alt={""}
+            title={item.track.album?.name ?? ""}
           />
         ) : (
           <div className="recent-avatar placeholder">🎵</div>

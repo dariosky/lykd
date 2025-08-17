@@ -5,6 +5,7 @@ from typing import List
 
 from models.common import CamelModel
 from sqlmodel import Field, SQLModel, Relationship
+from sqlalchemy import Index
 
 
 class Artist(SQLModel, CamelModel, table=True):
@@ -39,6 +40,11 @@ class TrackArtist(SQLModel, CamelModel, table=True):
     track_id: str = Field(primary_key=True, foreign_key="tracks.id")
     artist_id: str = Field(primary_key=True, foreign_key="artists.id")
 
+    __table_args__ = (
+        Index("idx_artists_tracks_track", "track_id"),
+        Index("idx_artists_tracks_artist", "artist_id"),
+    )
+
 
 class Track(SQLModel, CamelModel, table=True):
     __tablename__ = "tracks"
@@ -51,6 +57,8 @@ class Track(SQLModel, CamelModel, table=True):
     # Relationship to playlists through PlaylistTrack
     playlist_tracks: List["PlaylistTrack"] = Relationship(back_populates="track")
     uri: str | None = None
+
+    __table_args__ = (Index("idx_tracks_album_id", "album_id"),)
 
 
 class AlbumArtist(SQLModel, CamelModel, table=True):
@@ -69,6 +77,13 @@ class Play(SQLModel, CamelModel, table=True):
         default_factory=lambda: datetime.datetime.now(timezone.utc), primary_key=True
     )
     context_uri: str | None = Field(default=None)
+
+    __table_args__ = (
+        Index("idx_plays_date", "date"),
+        Index("idx_plays_user_date", "user_id", "date"),
+        Index("idx_plays_user_date_track", "user_id", "date", "track_id"),
+        Index("idx_plays_track", "track_id"),
+    )
 
 
 class Like(SQLModel, CamelModel, table=True):

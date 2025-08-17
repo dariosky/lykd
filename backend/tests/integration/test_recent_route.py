@@ -28,10 +28,9 @@ def setup_users_and_friends(test_session: Session):
     test_session.add(fr)
 
     # Tracks and artists/albums
-    t1 = Track(id="t1", title="Song1", duration=200000)
+    t1 = Track(id="t1", title="Nevermind", duration=200000)
     t2 = Track(id="t2", title="Song2", duration=180000)
-    t3 = Track(id="t3", title="Song3", duration=175000)
-    a1 = Artist(id="a1", name="Artist1", picture=None)
+    a1 = Artist(id="a1", name="Nirvana", picture=None)
     alb = Album(
         id="alb1",
         name="Album1",
@@ -40,14 +39,19 @@ def setup_users_and_friends(test_session: Session):
         release_date_precision=None,
     )
     t1.album_id = alb.id
-    test_session.add_all([t1, t2, t3, a1, alb])
+    test_session.add_all([t1, t2, a1, alb])
     test_session.add_all([TrackArtist(track_id="t1", artist_id="a1")])
 
-    now = datetime.datetime.now(timezone.utc)
+    # Plays spanning dates
+    now = datetime.datetime(2013, 8, 15, tzinfo=timezone.utc)
     plays = [
-        Play(user_id="me", track_id="t1", date=now - datetime.timedelta(minutes=1)),
-        Play(user_id="f1", track_id="t2", date=now - datetime.timedelta(minutes=2)),
-        Play(user_id="me", track_id="t3", date=now - datetime.timedelta(minutes=3)),
+        Play(user_id="me", track_id="t1", date=now),  # 2013-08-15 me Nirvana/Nevermind
+        Play(
+            user_id="f1", track_id="t2", date=now - datetime.timedelta(days=2)
+        ),  # 2013-08-13 friend Song2
+        Play(
+            user_id="me", track_id="t2", date=now.replace(year=2012)
+        ),  # 2012-08-15 me Song2
     ]
     test_session.add_all(plays)
     test_session.commit()
@@ -123,5 +127,49 @@ def test_recent_user_filter_and_auth(
     # Filter to non-friend -> 403
     r = client.get(f"/recent?user={nf.username}")
     assert r.status_code == 403
+
+    del test_app.dependency_overrides[get_current_user]
+
+
+def test_recent_search_by_title(client: TestClient, test_app, setup_users_and_friends):
+    me, *_ = setup_users_and_friends
+    from routes.deps import get_current_user
+
+    test_app.dependency_overrides[get_current_user] = lambda: me
+
+    # Search by token matching track title (Nevermind)
+    r = client.get("/recent?limit=10&q=never")
+    assert r.status_code == 200
+    items = r.json()["items"]
+    assert any("Nevermind" == it["track"]["title"] for it in items)
+
+    # Search by artist
+    r = client.get("/recent?limit=10&q=nirvana")
+    assert r.status_code == 200
+    items = r.json()["items"]
+    assert any(it["track"]["title"] == "Nevermind" for it in items)
+
+    del test_app.dependency_overrides[get_current_user]
+
+
+def test_recent_search_by_date_tokens(
+    client: TestClient, test_app, setup_users_and_friends
+):
+    me, *_ = setup_users_and_friends
+    from routes.deps import get_current_user
+
+    test_app.dependency_overrides[get_current_user] = lambda: me
+
+    # Year-only should include 2013 items only
+    r = client.get("/recent?limit=10&q=2013")
+    assert r.status_code == 200
+    items = r.json()["items"]
+    assert all(it["played_at"].startswith("2013-") for it in items)
+
+    # Year-month should include only 2013-08
+    r = client.get("/recent?limit=10&q=2013-08")
+    assert r.status_code == 200
+    items = r.json()["items"]
+    assert all(it["played_at"].startswith("2013-08") for it in items)
 
     del test_app.dependency_overrides[get_current_user]

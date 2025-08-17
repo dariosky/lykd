@@ -298,12 +298,14 @@ export const apiService = {
     before?: string | null;
     include_me?: boolean;
     user?: string | null;
+    q?: string | null;
   }): Promise<RecentResponse> => {
     const qs = new URLSearchParams();
     if (params.limit) qs.set("limit", String(params.limit));
     if (params.before) qs.set("before", params.before);
     if (params.include_me === false) qs.set("include_me", "false");
     if (params.user) qs.set("user", params.user);
+    if (params.q) qs.set("q", params.q);
     const response = await fetch(`/api/recent?${qs.toString()}`, {
       credentials: "include",
     });
@@ -351,6 +353,11 @@ export const queryKeys = {
   friendshipStatus: (username: string) =>
     ["friendship", "status", username] as const,
   pendingRequests: ["friendship", "pending"] as const,
-  recent: (includeMe: boolean, user?: string | null) =>
-    ["recent", includeMe ? "me+friends" : "friends", user ?? null] as const,
+  recent: (includeMe: boolean, user?: string | null, q?: string | null) =>
+    [
+      "recent",
+      includeMe ? "me+friends" : "friends",
+      user ?? null,
+      q ?? null,
+    ] as const,
 };

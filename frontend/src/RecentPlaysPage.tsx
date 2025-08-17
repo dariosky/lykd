@@ -10,8 +10,8 @@ export default function RecentPlaysPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const userParam = searchParams.get("user");
   const excludeParam = searchParams.get("exclude_me") === "true";
+  const qParam = searchParams.get("q") ?? "";
 
-  // Current user to handle disabling exclude when filtering to self
   const { data: viewerResp } = useQuery<UserResponse, Error>({
     queryKey: queryKeys.currentUser,
     queryFn: apiService.getCurrentUser,
@@ -21,7 +21,6 @@ export default function RecentPlaysPage() {
   const viewer = viewerResp?.user ?? null;
   const selfIdent = viewer?.username || viewer?.id || null;
 
-  // Derived include_me logic
   const filterUser = userParam;
   const excludeMe =
     filterUser && selfIdent && filterUser === selfIdent ? false : excludeParam;
@@ -29,13 +28,14 @@ export default function RecentPlaysPage() {
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, status } =
     useInfiniteQuery({
-      queryKey: queryKeys.recent(includeMe, filterUser),
+      queryKey: queryKeys.recent(includeMe, filterUser, qParam || null),
       queryFn: ({ pageParam }) =>
         apiService.getRecent({
           limit: 30,
           before: pageParam ?? null,
           include_me: includeMe,
           user: filterUser,
+          q: qParam || null,
         }),
       initialPageParam: null as string | null,
       getNextPageParam: (last) => last.next_before,
@@ -60,6 +60,14 @@ export default function RecentPlaysPage() {
   }, [hasNextPage, isFetchingNextPage, fetchNextPage, data]);
 
   const items = data?.pages.flatMap((p) => p.items) ?? [];
+
+  const onSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const next = new URLSearchParams(searchParams);
+    const val = e.target.value;
+    if (val) next.set("q", val);
+    else next.delete("q");
+    setSearchParams(next, { replace: true });
+  };
 
   const onItemUserClick = (it: RecentItem) => {
     const ident = it.user.username || it.user.id;
@@ -119,6 +127,15 @@ export default function RecentPlaysPage() {
             ) : (
               <div className="filter-chip muted">All users</div>
             )}
+          </div>
+          <div className="recent-search">
+            <input
+              className="recent-search-input"
+              type="search"
+              placeholder="Search title, album, artist, user or date"
+              value={qParam}
+              onChange={onSearchChange}
+            />
           </div>
         </div>
 
