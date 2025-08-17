@@ -12,6 +12,13 @@ export default function RecentPlaysPage() {
   const excludeParam = searchParams.get("exclude_me") === "true";
   const qParam = searchParams.get("q") ?? "";
 
+  // Local debounced search text state
+  const [searchText, setSearchText] = React.useState(qParam);
+  React.useEffect(() => {
+    // Keep local state in sync if URL changes externally
+    if (qParam !== searchText) setSearchText(qParam);
+  }, [qParam]);
+
   const { data: viewerResp } = useQuery<UserResponse, Error>({
     queryKey: queryKeys.currentUser,
     queryFn: apiService.getCurrentUser,
@@ -61,13 +68,18 @@ export default function RecentPlaysPage() {
 
   const items = data?.pages.flatMap((p) => p.items) ?? [];
 
-  const onSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const next = new URLSearchParams(searchParams);
-    const val = e.target.value;
-    if (val) next.set("q", val);
-    else next.delete("q");
-    setSearchParams(next, { replace: true });
-  };
+  // Debounced URL update for search
+  React.useEffect(() => {
+    const handle = window.setTimeout(() => {
+      if (searchText !== qParam) {
+        const next = new URLSearchParams(searchParams);
+        if (searchText) next.set("q", searchText);
+        else next.delete("q");
+        setSearchParams(next, { replace: true });
+      }
+    }, 500);
+    return () => window.clearTimeout(handle);
+  }, [searchText, qParam, searchParams, setSearchParams]);
 
   const onItemUserClick = (it: RecentItem) => {
     const ident = it.user.username || it.user.id;
@@ -133,8 +145,8 @@ export default function RecentPlaysPage() {
               className="recent-search-input"
               type="search"
               placeholder="Search title, album, artist, user or date"
-              value={qParam}
-              onChange={onSearchChange}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
             />
           </div>
         </div>
