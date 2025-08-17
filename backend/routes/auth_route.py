@@ -81,7 +81,6 @@ async def set_username(
     db_user.username = desired
     session.add(db_user)
     session.commit()
-    session.refresh(db_user)
 
     return {
         "user": {

@@ -1,12 +1,17 @@
 from alembic import context
 from sqlalchemy import engine_from_config, pool
-from models.auth import *  # noqa
-from models.music import *  # noqa
+from models import *  # noqa
 
 from sqlmodel import SQLModel
+from logging.config import fileConfig
+import logging
+
 
 if hasattr(context, "config"):  # pragma: no cover
     config = context.config
+
+    if config.config_file_name is not None and not logging.getLogger().handlers:
+        fileConfig(config.config_file_name)
     config.set_main_option("sqlalchemy.url", "sqlite:///./lykd.sqlite")
 
     target_metadata = SQLModel.metadata

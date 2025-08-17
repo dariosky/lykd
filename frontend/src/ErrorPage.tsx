@@ -38,13 +38,13 @@ function ErrorPage({
   const getDefaultTitle = (type: string): string => {
     switch (type) {
       case "spotify":
-        return "Spotify Connection Failed";
+        return "🙉 Spotify Connection Failed";
       case "api":
-        return "API Request Failed";
+        return "🫥 Request Failed";
       case "network":
-        return "Network Error";
+        return "🔌 Network Error";
       default:
-        return "Something Went Wrong";
+        return "🥺 Something Went Wrong";
     }
   };
 
@@ -69,7 +69,7 @@ function ErrorPage({
             <p>If this problem persists, please check:</p>
             <ul>
               <li>Your internet connection</li>
-              <li>That you have a Spotify account</li>
+              <li>Your Spotify account</li>
               <li>That you granted the necessary permissions</li>
               <li>Try logging out and back into Spotify</li>
             </ul>
@@ -82,7 +82,6 @@ function ErrorPage({
             <ul>
               <li>Refresh the page and try again</li>
               <li>Check your Internet connection</li>
-              <li>Wait a few minutes and retry</li>
               <li>Contact support if the issue continues</li>
             </ul>
           </>
@@ -95,7 +94,6 @@ function ErrorPage({
               <li>Check your Internet connection</li>
               <li>Try refreshing the page</li>
               <li>Disable any VPN or proxy</li>
-              <li>Check if the server is accessible</li>
             </ul>
           </>
         );
