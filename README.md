@@ -71,14 +71,8 @@ This project uses pre-commit hooks to maintain code quality:
 The pre-commit hooks will automatically run before each commit. You can also run them manually:
 
 ```bash
-# Run pre-commit on all files
+# Run pre-commit on all files (format, lint, tests)
 uv run pre-commit run --all-files
-
-# Format backend code with Ruff
-cd backend && uv run ruff format .
-
-# Format frontend code with Prettier
-cd frontend && npm run format
 ```
 
 ### Available Scripts
@@ -124,10 +118,12 @@ LYKD expands on this concept by creating a full web application that makes your 
 
 # TODO:
 - [x] Create a public user dashboard (with very broad stats)
-- [ ] Friend requests and acceptance flow
-- [ ] Do a quick sync of likes often - and a full sync (for deletions) every 24h
-- [ ] Sync playlists
-- [ ] Add a web player
-- [ ] Add suggestions (including songs listened recently)
-- [ ] Add a "like" button
 - [x] Allow to import full streaming history from [Spotify privacy page](https://www.spotify.com/ca-en/account/privacy/)
+- [x] Friend requests and acceptance flow
+- [x] Do a quick sync of likes often - and a full sync (for deletions) every 12h
+- [ ] Add an ignore and report button (to ignore and propose a global ignore)
+- [ ] Add suggestions (including songs listened recently)
+- [ ] Add a web player
+- [ ] Add a "like" button
+- [ ] Sync playlists
+- [ ] Sync followed artists

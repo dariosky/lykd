@@ -98,7 +98,7 @@ function Dashboard() {
           </div>
 
           {/* Recommendations card unchanged */}
-          <div className="dashboard-card">
+          <div className="dashboard-card" style={{ display: "none" }}>
             <div className="card-header">
               <h2>Recommendations</h2>
               <svg

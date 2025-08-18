@@ -35,21 +35,33 @@ def get_table_columns_sqlmodel(session: Session, table_name: str) -> List[str]:
     return [col["name"] for col in table_info]
 
 
+def get_pk_columns_sqlmodel(session: Session, table_name: str) -> List[str]:
+    """Return primary key column names ordered by PK sequence (SQLite's pk>0)."""
+    info = get_table_info_sqlmodel(session, table_name)
+    pk_cols = [(col["pk"], col["name"]) for col in info if col["pk"]]
+    pk_cols.sort(key=lambda x: x[0])
+    return [name for _, name in pk_cols]
+
+
 def copy_table_data_sqlmodel(
     source_session: Session, dest_session: Session, source_table: str, dest_table: str
 ):
-    """Copy data from source table to destination table using SQLModel"""
+    """Copy data from source table to destination table using SQLModel.
+    Preserves destination-only columns by using UPSERT that updates only common, non-PK columns.
+    """
     print(f"Copying data from {source_table} to {dest_table}...")
 
-    # Get columns from both tables
+    # Get columns and PKs
     source_columns = get_table_columns_sqlmodel(source_session, source_table)
     dest_columns = get_table_columns_sqlmodel(dest_session, dest_table)
+    pk_columns = get_pk_columns_sqlmodel(dest_session, dest_table)
 
     # Use common columns
     common_columns = [col for col in source_columns if col in dest_columns]
     columns_str = ", ".join(common_columns)
 
     print(f"  Common columns: {common_columns}")
+    print(f"  PK columns: {pk_columns}")
 
     if not common_columns:
         print(f"  No common columns found between {source_table} and {dest_table}")
@@ -64,18 +76,36 @@ def copy_table_data_sqlmodel(
         print(f"  No data found in {source_table}")
         return
 
-    # Insert data into destination table
+    # Build UPSERT query that updates only common, non-PK columns
     placeholders = ", ".join([f":{col}" for col in common_columns])
-    insert_query = (
-        f"INSERT OR REPLACE INTO {dest_table} ({columns_str}) VALUES ({placeholders})"
-    )
 
-    # Use session.execute() with raw SQL and parameters
+    if pk_columns:
+        conflict_target = ", ".join(pk_columns)
+        # set assignments for non-PK common columns
+        update_cols = [c for c in common_columns if c not in pk_columns]
+        if update_cols:
+            update_set = ", ".join([f"{c}=excluded.{c}" for c in update_cols])
+            insert_query = (
+                f"INSERT INTO {dest_table} ({columns_str}) VALUES ({placeholders}) "  # nosec B608
+                f"ON CONFLICT({conflict_target}) DO UPDATE SET {update_set}"
+            )
+        else:
+            # Nothing to update besides PKs; do nothing on conflict
+            insert_query = (
+                f"INSERT INTO {dest_table} ({columns_str}) VALUES ({placeholders}) "  # nosec B608
+                f"ON CONFLICT({conflict_target}) DO NOTHING"
+            )
+    else:
+        # Fallback: no PK info (unlikely). Use INSERT OR IGNORE to avoid clobbering.*
+        # *We avoid REPLACE to prevent wiping destination-only fields.
+        insert_query = f"INSERT OR IGNORE INTO {dest_table} ({columns_str}) VALUES ({placeholders})"  # nosec B608
+
+    # Execute upsert per row
     for row in rows:
-        # Convert row to dictionary with column names as keys
-        row_dict = {}
-        for i, col in enumerate(common_columns):
-            row_dict[col] = row[i] if i < len(row) else None
+        row_dict = {
+            col: row[i] if i < len(row) else None
+            for i, col in enumerate(common_columns)
+        }
         dest_session.execute(text(insert_query), row_dict)
 
     dest_session.commit()
@@ -212,7 +242,6 @@ def main():
                     print(
                         f"Warning: Source table '{source_table}' exists but destination table '{dest_table}' not found"
                     )
-                # Skip if source table doesn't exist (it's expected for some mappings)
 
             # Populate usernames for users without them
             populate_usernames_sqlmodel(dest_session)
