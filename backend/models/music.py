@@ -83,6 +83,7 @@ class Play(SQLModel, CamelModel, table=True):
         Index("idx_plays_date", "date"),
         Index("idx_plays_user_date", "user_id", "date"),
         Index("idx_plays_user_date_track", "user_id", "date", "track_id"),
+        Index("idx_plays_user_track", "user_id", "track_id"),
         Index("idx_plays_track", "track_id"),
     )
 
