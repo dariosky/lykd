@@ -92,6 +92,22 @@ export interface PendingRequestsResponse {
   pending: PendingRequestItem[];
 }
 
+// Ignored items
+export interface IgnoredTrackItem {
+  track_id: string;
+  title: string;
+  album?: { id: string; name: string; picture: string | null } | null;
+  artists: string[];
+}
+export interface IgnoredArtistItem {
+  artist_id: string;
+  name: string;
+}
+export interface IgnoredListResponse {
+  tracks: IgnoredTrackItem[];
+  artists: IgnoredArtistItem[];
+}
+
 // Recent activity
 export interface RecentTrack {
   id: string;
@@ -292,6 +308,62 @@ export const apiService = {
     return response.json();
   },
 
+  // Ignore APIs
+  getIgnored: async (): Promise<IgnoredListResponse> => {
+    const response = await fetch(`/api/ignore`, { credentials: "include" });
+    if (!response.ok)
+      throw new Error(`Failed to get ignored: ${response.status}`);
+    return response.json();
+  },
+  ignoreTrack: async (trackId: string): Promise<{ message: string }> => {
+    const response = await fetch(
+      `/api/ignore/track/${encodeURIComponent(trackId)}`,
+      {
+        method: "POST",
+        credentials: "include",
+      },
+    );
+    if (!response.ok)
+      throw new Error(`Failed to ignore track: ${response.status}`);
+    return response.json();
+  },
+  unignoreTrack: async (trackId: string): Promise<{ message: string }> => {
+    const response = await fetch(
+      `/api/ignore/track/${encodeURIComponent(trackId)}`,
+      {
+        method: "DELETE",
+        credentials: "include",
+      },
+    );
+    if (!response.ok)
+      throw new Error(`Failed to unignore track: ${response.status}`);
+    return response.json();
+  },
+  ignoreArtist: async (artistId: string): Promise<{ message: string }> => {
+    const response = await fetch(
+      `/api/ignore/artist/${encodeURIComponent(artistId)}`,
+      {
+        method: "POST",
+        credentials: "include",
+      },
+    );
+    if (!response.ok)
+      throw new Error(`Failed to ignore artist: ${response.status}`);
+    return response.json();
+  },
+  unignoreArtist: async (artistId: string): Promise<{ message: string }> => {
+    const response = await fetch(
+      `/api/ignore/artist/${encodeURIComponent(artistId)}`,
+      {
+        method: "DELETE",
+        credentials: "include",
+      },
+    );
+    if (!response.ok)
+      throw new Error(`Failed to unignore artist: ${response.status}`);
+    return response.json();
+  },
+
   // Recent activity
   getRecent: async (params: {
     limit?: number;
@@ -360,4 +432,5 @@ export const queryKeys = {
       user ?? null,
       q ?? null,
     ] as const,
+  ignored: ["ignore", "list"] as const,
 };

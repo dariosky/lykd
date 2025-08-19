@@ -113,7 +113,7 @@ def test_recent_user_filter_and_auth(
     me, f1, nf, _ = setup_users_and_friends
     from routes.deps import get_current_user
 
-    # Unauth -> 401
+    # Unauthenticated -> 401
     r = client.get("/recent")
     assert r.status_code == 401
 

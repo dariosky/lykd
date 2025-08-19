@@ -8,8 +8,16 @@ from sqlmodel import Session, select
 from models.auth import User
 from models.common import get_session
 from models.friendship import Friendship, FriendshipStatus
-from models.music import Play, Track, TrackArtist, Artist, Album
-from routes.deps import get_current_user
+from models.music import (
+    Play,
+    Track,
+    TrackArtist,
+    Artist,
+    Album,
+    IgnoredTrack,
+    IgnoredArtist,
+)
+from routes.deps import current_user
 
 router = APIRouter()
 
@@ -40,16 +48,13 @@ def _friends_ids(session: Session, me_id: str) -> List[str]:
 @router.get("/recent")
 async def recent_activity(
     session: Session = Depends(get_session),
-    current_user: User | None = Depends(get_current_user),
+    current_user: User | None = Depends(current_user),
     limit: int = Query(20, ge=1, le=100),
     before: Optional[str] = None,
     include_me: bool = True,
     user: Optional[str] = None,  # username or id to filter to a specific user
     q: Optional[str] = None,  # free-search
 ):
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
     before_dt = _parse_before(before)
     if before and not before_dt:
         raise HTTPException(status_code=400, detail="Invalid 'before' parameter")
@@ -88,6 +93,23 @@ async def recent_activity(
             else:
                 # No friends, force empty result fast
                 qsel = qsel.where(Play.user_id == "__none__")
+
+    # Exclude items ignored by current user (by track or by any artist)
+    ignore_track_clause = exists(
+        select(IgnoredTrack).where(
+            IgnoredTrack.user_id == current_user.id,
+            IgnoredTrack.track_id == Play.track_id,
+        )
+    )
+    ignore_artist_clause = exists(
+        select(IgnoredArtist)
+        .join(TrackArtist, TrackArtist.artist_id == IgnoredArtist.artist_id)
+        .where(
+            IgnoredArtist.user_id == current_user.id,
+            TrackArtist.track_id == Play.track_id,
+        )
+    )
+    qsel = qsel.where(~ignore_track_clause, ~ignore_artist_clause)
 
     # Free-text search across fields
     def _date_range_for_token(tok: str) -> Optional[tuple[datetime, datetime]]:

@@ -6,7 +6,7 @@ from sqlmodel import Session, select
 from models.auth import User
 from models.common import get_session
 from models.friendship import Friendship, FriendshipStatus
-from routes.deps import get_current_user
+from routes.deps import current_user
 from services.friendship import (
     request_friendship as svc_request_friendship,
     accept_friendship as svc_accept_friendship,
@@ -29,7 +29,7 @@ def _get_user_by_identifier(session: Session, ident: str) -> User | None:
 async def friendship_status(
     identifier: str,
     session: Session = Depends(get_session),
-    current_user: User | None = Depends(get_current_user),
+    user: User | None = Depends(current_user),
 ):
     """Return the relationship status between the current user and the target user.
     Possible statuses: none, self, friends, pending_outgoing, pending_incoming
@@ -38,13 +38,10 @@ async def friendship_status(
     if not target:
         raise HTTPException(status_code=404, detail="User not found")
 
-    if not current_user:
-        return {"status": "none"}
-
-    if current_user.id == target.id:
+    if user.id == target.id:
         return {"status": "self"}
 
-    low, high = Friendship.canonical_pair(current_user.id, target.id)
+    low, high = Friendship.canonical_pair(user.id, target.id)
     friendship = session.exec(
         select(Friendship).where(
             Friendship.user_low_id == low, Friendship.user_high_id == high
@@ -58,7 +55,7 @@ async def friendship_status(
         return {"status": "friends"}
 
     if friendship.status == FriendshipStatus.pending:
-        if friendship.requested_by_id == current_user.id:
+        if friendship.requested_by_id == user.id:
             return {"status": "pending_outgoing"}
         else:
             return {"status": "pending_incoming"}
@@ -70,11 +67,8 @@ async def friendship_status(
 @router.get("/pending")
 async def pending_requests(
     session: Session = Depends(get_session),
-    current_user: User | None = Depends(get_current_user),
+    user: User | None = Depends(current_user),
 ):
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
     # Incoming requests to current_user
     rows: List[Friendship] = session.exec(
         select(Friendship).where(Friendship.status == FriendshipStatus.pending)
@@ -82,14 +76,12 @@ async def pending_requests(
 
     pending_list = []
     for fr in rows:
-        if current_user.id not in (fr.user_low_id, fr.user_high_id):
+        if user.id not in (fr.user_low_id, fr.user_high_id):
             continue
-        if fr.requested_by_id == current_user.id:
+        if fr.requested_by_id == user.id:
             # Outgoing, skip for this endpoint
             continue
-        other_id = (
-            fr.user_high_id if current_user.id == fr.user_low_id else fr.user_low_id
-        )
+        other_id = fr.user_high_id if user.id == fr.user_low_id else fr.user_low_id
         other = session.get(User, other_id)
         if not other:
             continue
@@ -115,19 +107,14 @@ async def pending_requests(
 async def send_friend_request(
     identifier: str,
     session: Session = Depends(get_session),
-    current_user: User | None = Depends(get_current_user),
+    user: User | None = Depends(current_user),
 ):
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
     recipient = _get_user_by_identifier(session, identifier)
     if not recipient:
         raise HTTPException(status_code=404, detail="User not found")
 
     try:
-        fr = svc_request_friendship(
-            session, requester=current_user, recipient=recipient
-        )
+        fr = svc_request_friendship(session, requester=user, recipient=recipient)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -144,17 +131,14 @@ async def send_friend_request(
 async def accept_request(
     identifier: str,
     session: Session = Depends(get_session),
-    current_user: User | None = Depends(get_current_user),
+    user: User | None = Depends(current_user),
 ):
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
     other = _get_user_by_identifier(session, identifier)
     if not other:
         raise HTTPException(status_code=404, detail="User not found")
 
     try:
-        fr = svc_accept_friendship(session, requester=current_user, recipient=other)
+        fr = svc_accept_friendship(session, requester=user, recipient=other)
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
@@ -172,17 +156,14 @@ async def accept_request(
 async def decline_request(
     identifier: str,
     session: Session = Depends(get_session),
-    current_user: User | None = Depends(get_current_user),
+    user: User | None = Depends(current_user),
 ):
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
     other = _get_user_by_identifier(session, identifier)
     if not other:
         raise HTTPException(status_code=404, detail="User not found")
 
     try:
-        fr = svc_decline_friendship(session, requester=current_user, recipient=other)
+        fr = svc_decline_friendship(session, requester=user, recipient=other)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -198,17 +179,14 @@ async def decline_request(
 async def unfriend(
     identifier: str,
     session: Session = Depends(get_session),
-    current_user: User | None = Depends(get_current_user),
+    user: User | None = Depends(current_user),
 ):
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
     other = _get_user_by_identifier(session, identifier)
     if not other:
         raise HTTPException(status_code=404, detail="User not found")
 
     try:
-        svc_unfriend(session, user_id=current_user.id, other_id=other.id)
+        svc_unfriend(session, user_id=user.id, other_id=other.id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

@@ -4,8 +4,9 @@ from enum import Enum
 from typing import List
 
 from models.common import CamelModel
+from models.types import UtcAwareDateTime
 from sqlmodel import Field, SQLModel, Relationship
-from sqlalchemy import Index
+from sqlalchemy import Index, Column, func
 
 
 class Artist(SQLModel, CamelModel, table=True):
@@ -128,3 +129,25 @@ class Playlist(SQLModel, CamelModel, table=True):
     def tracks(self) -> List["Track"]:
         """Get all tracks in this playlist"""
         return [pt.track for pt in self.playlist_tracks]
+
+
+class IgnoredTrack(SQLModel, CamelModel, table=True):
+    __tablename__ = "ignored_tracks"
+
+    user_id: str = Field(primary_key=True, foreign_key="users.id")
+    track_id: str = Field(primary_key=True, foreign_key="tracks.id")
+    ts: datetime.datetime | None = Field(
+        default=None,
+        sa_column=Column(UtcAwareDateTime(), onupdate=func.now(), nullable=True),
+    )
+
+
+class IgnoredArtist(SQLModel, CamelModel, table=True):
+    __tablename__ = "ignored_artists"
+
+    user_id: str = Field(primary_key=True, foreign_key="users.id")
+    artist_id: str = Field(primary_key=True, foreign_key="artists.id")
+    ts: datetime.datetime | None = Field(
+        default=None,
+        sa_column=Column(UtcAwareDateTime(), onupdate=func.now(), nullable=True),
+    )

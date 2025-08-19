@@ -22,7 +22,7 @@ import settings
 from models.auth import User, populate_username
 from models.common import get_session
 from models.music import Like, Play
-from routes.deps import get_current_user
+from routes.deps import current_user
 from services import Spotify
 from services.slack import slack
 from services.spotify_history import process_spotify_history_zip
@@ -109,21 +109,21 @@ async def spotify_callback(
 
 @router.get("/spotify/stats")
 async def get_spotify_stats(
-    current_user: User = Depends(get_current_user),
+    user: User = Depends(current_user),
     session: Session = Depends(get_session),
 ):
     """Get Spotify sync statistics for the current user"""
 
     total_likes = session.exec(
-        select(func.count(Like.track_id)).where(Like.user_id == current_user.id)
+        select(func.count(Like.track_id)).where(Like.user_id == user.id)
     ).one()
     total_plays = session.exec(
-        select(func.count(Play.track_id)).where(Play.user_id == current_user.id)
+        select(func.count(Play.track_id)).where(Play.user_id == user.id)
     ).one()
 
     # Get the earliest like date (tracking since)
     earliest_like_date = session.exec(
-        select(func.min(Play.date)).where(Play.user_id == current_user.id)
+        select(func.min(Play.date)).where(Play.user_id == user.id)
     ).one()
 
     tracking_since = None
@@ -134,9 +134,9 @@ async def get_spotify_stats(
         "total_likes_synced": total_likes,
         "total_plays_synced": total_plays,
         "tracking_since": tracking_since,
-        "active": bool(current_user.tokens),
-        "full_history_sync_wait": get_history_sync_seconds_wait(current_user),
-        "last_full_history_sync": current_user.last_history_sync,
+        "active": bool(user.tokens),
+        "full_history_sync_wait": get_history_sync_seconds_wait(user),
+        "last_full_history_sync": user.last_history_sync,
     }
 
 
@@ -158,14 +158,14 @@ async def import_spotify_extended_history(
     file: UploadFile = File(
         ..., description="ZIP file containing Extended streaming history"
     ),
-    current_user: User = Depends(get_current_user),
+    user: User = Depends(current_user),
     session: Session = Depends(get_session),
 ):
     """Start a background job to import Extended streaming history from a ZIP.
 
     Returns immediately while the job runs in the background.
     """
-    if get_history_sync_seconds_wait(current_user) > 0:
+    if get_history_sync_seconds_wait(user) > 0:
         raise HTTPException(
             status_code=429, detail="You need to wait before syncing again"
         )
@@ -202,11 +202,11 @@ async def import_spotify_extended_history(
         raise HTTPException(status_code=400, detail="Please upload a valid ZIP file")
 
     # mark the user as having started a history sync
-    current_user.last_history_sync = datetime.datetime.now(datetime.timezone.utc)
-    session.add(current_user)
+    user.last_history_sync = datetime.datetime.now(datetime.timezone.utc)
+    session.add(user)
     session.commit()
 
     # Schedule background processing
-    background_tasks.add_task(process_spotify_history_zip, current_user, tmp_zip)
+    background_tasks.add_task(process_spotify_history_zip, user, tmp_zip)
 
     return {"message": "Import started"}

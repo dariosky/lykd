@@ -13,7 +13,7 @@ def get_test_user(
     access_token: str = "access token", refresh_token: str = "refresh token"
 ) -> User:
     return User(
-        id=1,
+        id="test",
         name="Test User",
         email="f@t",
         tokens={"refresh_token": refresh_token, "access_token": access_token},

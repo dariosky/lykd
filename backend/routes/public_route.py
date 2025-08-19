@@ -2,11 +2,20 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func
-from sqlmodel import Session, select
+from sqlalchemy import func, select, exists
+from sqlmodel import Session
 
 from models.auth import User
-from models.music import Play, Like, Track, TrackArtist, Artist, Album
+from models.music import (
+    Play,
+    Like,
+    Track,
+    TrackArtist,
+    Artist,
+    Album,
+    IgnoredTrack,
+    IgnoredArtist,
+)
 from models.common import get_session
 
 router = APIRouter()
@@ -29,11 +38,49 @@ async def get_public_profile(username: str, db: Session = Depends(get_session)):
 
     # Playback Stats (robust scalar extraction)
     total_plays = db.exec(
-        select(func.count()).select_from(Play).where(Play.user_id == user.id)
+        select(func.count())
+        .select_from(Play)
+        .join(Track, Track.id == Play.track_id)
+        .where(
+            Play.user_id == user.id,
+            ~exists(
+                select(IgnoredTrack).where(
+                    IgnoredTrack.user_id == user.id,
+                    IgnoredTrack.track_id == Play.track_id,
+                )
+            ),
+            ~exists(
+                select(IgnoredArtist)
+                .join(TrackArtist, TrackArtist.artist_id == IgnoredArtist.artist_id)
+                .where(
+                    IgnoredArtist.user_id == user.id,
+                    TrackArtist.track_id == Play.track_id,
+                )
+            ),
+        )
     ).one()
 
     total_likes = db.exec(
-        select(func.count()).select_from(Like).where(Like.user_id == user.id)
+        select(func.count())
+        .select_from(Like)
+        .join(Track, Track.id == Like.track_id)
+        .where(
+            Like.user_id == user.id,
+            ~exists(
+                select(IgnoredTrack).where(
+                    IgnoredTrack.user_id == user.id,
+                    IgnoredTrack.track_id == Like.track_id,
+                )
+            ),
+            ~exists(
+                select(IgnoredArtist)
+                .join(TrackArtist, TrackArtist.artist_id == IgnoredArtist.artist_id)
+                .where(
+                    IgnoredArtist.user_id == user.id,
+                    TrackArtist.track_id == Like.track_id,
+                )
+            ),
+        )
     ).one()
 
     total_listen_sec = (
@@ -41,7 +88,23 @@ async def get_public_profile(username: str, db: Session = Depends(get_session)):
             select(func.coalesce(func.sum(Track.duration / 1000), 0))
             .select_from(Play)
             .join(Track, Track.id == Play.track_id)
-            .where(Play.user_id == user.id)
+            .where(
+                Play.user_id == user.id,
+                ~exists(
+                    select(IgnoredTrack).where(
+                        IgnoredTrack.user_id == user.id,
+                        IgnoredTrack.track_id == Play.track_id,
+                    )
+                ),
+                ~exists(
+                    select(IgnoredArtist)
+                    .join(TrackArtist, TrackArtist.artist_id == IgnoredArtist.artist_id)
+                    .where(
+                        IgnoredArtist.user_id == user.id,
+                        TrackArtist.track_id == Play.track_id,
+                    )
+                ),
+            )
         ).one()
         or 0
     )
@@ -52,7 +115,24 @@ async def get_public_profile(username: str, db: Session = Depends(get_session)):
             select(func.coalesce(func.sum(Track.duration / 1000), 0))
             .select_from(Play)
             .join(Track, Track.id == Play.track_id)
-            .where(Play.user_id == user.id, Play.date >= cutoff)
+            .where(
+                Play.user_id == user.id,
+                Play.date >= cutoff,
+                ~exists(
+                    select(IgnoredTrack).where(
+                        IgnoredTrack.user_id == user.id,
+                        IgnoredTrack.track_id == Play.track_id,
+                    )
+                ),
+                ~exists(
+                    select(IgnoredArtist)
+                    .join(TrackArtist, TrackArtist.artist_id == IgnoredArtist.artist_id)
+                    .where(
+                        IgnoredArtist.user_id == user.id,
+                        TrackArtist.track_id == Play.track_id,
+                    )
+                ),
+            )
         ).one()
         or 0
     )
@@ -93,7 +173,24 @@ async def get_public_profile(username: str, db: Session = Depends(get_session)):
     # Top 5 songs last 30 days
     rows_30 = db.exec(
         select(Play.track_id, func.count().label("cnt"))
-        .where(Play.user_id == user.id, Play.date >= cutoff)
+        .where(
+            Play.user_id == user.id,
+            Play.date >= cutoff,
+            ~exists(
+                select(IgnoredTrack).where(
+                    IgnoredTrack.user_id == user.id,
+                    IgnoredTrack.track_id == Play.track_id,
+                )
+            ),
+            ~exists(
+                select(IgnoredArtist)
+                .join(TrackArtist, TrackArtist.artist_id == IgnoredArtist.artist_id)
+                .where(
+                    IgnoredArtist.user_id == user.id,
+                    TrackArtist.track_id == Play.track_id,
+                )
+            ),
+        )
         .group_by(Play.track_id)
         .order_by(func.count().desc())
         .limit(5)
@@ -125,7 +222,23 @@ async def get_public_profile(username: str, db: Session = Depends(get_session)):
     # Top 5 songs all time
     rows_all = db.exec(
         select(Play.track_id, func.count().label("cnt"))
-        .where(Play.user_id == user.id)
+        .where(
+            Play.user_id == user.id,
+            ~exists(
+                select(IgnoredTrack).where(
+                    IgnoredTrack.user_id == user.id,
+                    IgnoredTrack.track_id == Play.track_id,
+                )
+            ),
+            ~exists(
+                select(IgnoredArtist)
+                .join(TrackArtist, TrackArtist.artist_id == IgnoredArtist.artist_id)
+                .where(
+                    IgnoredArtist.user_id == user.id,
+                    TrackArtist.track_id == Play.track_id,
+                )
+            ),
+        )
         .group_by(Play.track_id)
         .order_by(func.count().desc())
         .limit(5)
@@ -161,7 +274,21 @@ async def get_public_profile(username: str, db: Session = Depends(get_session)):
         .join(Track, Track.id == Play.track_id)
         .join(TrackArtist, TrackArtist.track_id == Track.id)
         .join(Artist, Artist.id == TrackArtist.artist_id)
-        .where(Play.user_id == user.id)
+        .where(
+            Play.user_id == user.id,
+            ~exists(
+                select(IgnoredTrack).where(
+                    IgnoredTrack.user_id == user.id,
+                    IgnoredTrack.track_id == Play.track_id,
+                )
+            ),
+            ~exists(
+                select(IgnoredArtist).where(
+                    IgnoredArtist.user_id == user.id,
+                    IgnoredArtist.artist_id == TrackArtist.artist_id,
+                )
+            ),
+        )
         .group_by(Artist.id, Artist.name)
         .order_by(func.count().desc())
         .limit(5)
@@ -178,7 +305,24 @@ async def get_public_profile(username: str, db: Session = Depends(get_session)):
         .select_from(Play)
         .join(Track, Track.id == Play.track_id)
         .join(Album, Album.id == Track.album_id)
-        .where(Play.user_id == user.id, Album.release_date.is_not(None))
+        .where(
+            Play.user_id == user.id,
+            Album.release_date.is_not(None),
+            ~exists(
+                select(IgnoredTrack).where(
+                    IgnoredTrack.user_id == user.id,
+                    IgnoredTrack.track_id == Play.track_id,
+                )
+            ),
+            ~exists(
+                select(IgnoredArtist)
+                .join(TrackArtist, TrackArtist.artist_id == IgnoredArtist.artist_id)
+                .where(
+                    IgnoredArtist.user_id == user.id,
+                    TrackArtist.track_id == Play.track_id,
+                )
+            ),
+        )
         .group_by("century")
         .order_by(func.count().desc())
         .limit(1)

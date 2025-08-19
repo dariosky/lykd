@@ -221,13 +221,3 @@ class TestUtilityFunctions:
 
         user = get_current_user(mock_request, test_session)
         assert user is None
-
-    def test_get_current_user_without_session(self, test_session):
-        """Test get_current_user without session."""
-        from routes.deps import get_current_user
-
-        mock_request = Mock()
-        mock_request.session = {}
-
-        user = get_current_user(mock_request, test_session)
-        assert user is None

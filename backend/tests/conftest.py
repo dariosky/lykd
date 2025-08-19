@@ -2,6 +2,8 @@
 
 import asyncio
 import os
+import sys
+import pathlib
 import pytest
 import tempfile
 from unittest.mock import patch
@@ -11,6 +13,9 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel.pool import StaticPool
 
+BACKEND_DIR = pathlib.Path(__file__).resolve().parents[1]
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
 
 # Set test environment before importing backend modules
 os.environ["TESTING"] = "true"
@@ -36,7 +41,7 @@ def event_loop():
     loop.close()
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def test_engine():
     """Create a test database engine."""
     engine = create_engine(
@@ -44,6 +49,9 @@ def test_engine():
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
+    # Ensure models are imported so tables are registered in SQLModel.metadata
+    import models  # noqa: F401
+
     SQLModel.metadata.create_all(engine)
     return engine
 

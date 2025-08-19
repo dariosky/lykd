@@ -5,8 +5,8 @@ from pydantic import BaseModel
 
 from models.auth import User
 from models.common import get_session
+from routes.deps import get_current_user
 from settings import PROJECT_PATH
-from .deps import get_current_user
 
 router = APIRouter()
 
@@ -24,20 +24,20 @@ async def index():
 
 @router.get("/user/me")
 async def get_current_user_info(
-    current_user: User | None = Depends(get_current_user),
+    user: User | None = Depends(get_current_user),
 ):
-    if not current_user:
+    if not user:
         return {"user": None}
 
     return {
         "user": {
-            "id": current_user.id,
-            "name": current_user.name,
-            "email": current_user.email,
-            "username": current_user.username,
-            "picture": current_user.picture,
-            "join_date": current_user.join_date.isoformat(),
-            "is_admin": current_user.is_admin,
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+            "username": user.username,
+            "picture": user.picture,
+            "join_date": user.join_date.isoformat(),
+            "is_admin": user.is_admin,
         }
     }
 
@@ -55,13 +55,9 @@ class UsernameUpdate(BaseModel):
 @router.post("/user/username")
 async def set_username(
     payload: UsernameUpdate,
-    request: Request,
     session: Session = Depends(get_session),
     current_user: User | None = Depends(get_current_user),
 ):
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
     desired = (payload.username or "").strip()
     if not desired:
         raise HTTPException(status_code=400, detail="Username cannot be empty")
