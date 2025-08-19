@@ -19,12 +19,15 @@ from models.music import (
     GlobalIgnoredArtist,
 )
 from models.common import get_session
+from routes.deps import get_current_user
 
 router = APIRouter()
 
 
 # Query builders (reusable in tests)
-def build_total_plays_stmt(user_id: str):
+def build_total_plays_stmt(user_id: str, viewer_id: str | None = None):
+    if viewer_id is None:
+        viewer_id = user_id
     return (
         select(func.count())
         .select_from(Play)
@@ -44,7 +47,7 @@ def build_total_plays_stmt(user_id: str):
             ),
             ~exists(
                 select(IgnoredTrack).where(
-                    IgnoredTrack.user_id == user_id,
+                    IgnoredTrack.user_id == viewer_id,
                     IgnoredTrack.track_id == Play.track_id,
                 )
             ),
@@ -52,7 +55,7 @@ def build_total_plays_stmt(user_id: str):
                 select(IgnoredArtist)
                 .join(TrackArtist, TrackArtist.artist_id == IgnoredArtist.artist_id)
                 .where(
-                    IgnoredArtist.user_id == user_id,
+                    IgnoredArtist.user_id == viewer_id,
                     TrackArtist.track_id == Play.track_id,
                 )
             ),
@@ -60,7 +63,9 @@ def build_total_plays_stmt(user_id: str):
     )
 
 
-def build_total_likes_stmt(user_id: str):
+def build_total_likes_stmt(user_id: str, viewer_id: str | None = None):
+    if viewer_id is None:
+        viewer_id = user_id
     return (
         select(func.count())
         .select_from(Like)
@@ -80,7 +85,7 @@ def build_total_likes_stmt(user_id: str):
             ),
             ~exists(
                 select(IgnoredTrack).where(
-                    IgnoredTrack.user_id == user_id,
+                    IgnoredTrack.user_id == viewer_id,
                     IgnoredTrack.track_id == Like.track_id,
                 )
             ),
@@ -88,7 +93,7 @@ def build_total_likes_stmt(user_id: str):
                 select(IgnoredArtist)
                 .join(TrackArtist, TrackArtist.artist_id == IgnoredArtist.artist_id)
                 .where(
-                    IgnoredArtist.user_id == user_id,
+                    IgnoredArtist.user_id == viewer_id,
                     TrackArtist.track_id == Like.track_id,
                 )
             ),
@@ -96,7 +101,9 @@ def build_total_likes_stmt(user_id: str):
     )
 
 
-def build_total_listen_sec_stmt(user_id: str):
+def build_total_listen_sec_stmt(user_id: str, viewer_id: str | None = None):
+    if viewer_id is None:
+        viewer_id = user_id
     return (
         select(func.coalesce(func.sum(Track.duration / 1000), 0))
         .select_from(Play)
@@ -117,7 +124,7 @@ def build_total_listen_sec_stmt(user_id: str):
             ),
             ~exists(
                 select(IgnoredTrack).where(
-                    IgnoredTrack.user_id == user_id,
+                    IgnoredTrack.user_id == viewer_id,
                     IgnoredTrack.track_id == Play.track_id,
                 )
             ),
@@ -125,7 +132,7 @@ def build_total_listen_sec_stmt(user_id: str):
                 select(IgnoredArtist)
                 .join(TrackArtist, TrackArtist.artist_id == IgnoredArtist.artist_id)
                 .where(
-                    IgnoredArtist.user_id == user_id,
+                    IgnoredArtist.user_id == viewer_id,
                     TrackArtist.track_id == Play.track_id,
                 )
             ),
@@ -133,7 +140,11 @@ def build_total_listen_sec_stmt(user_id: str):
     )
 
 
-def build_monthly_listen_sec_stmt(user_id: str, cutoff: datetime):
+def build_monthly_listen_sec_stmt(
+    user_id: str, cutoff: datetime, viewer_id: str | None = None
+):
+    if viewer_id is None:
+        viewer_id = user_id
     return (
         select(func.coalesce(func.sum(Track.duration / 1000), 0))
         .select_from(Play)
@@ -155,7 +166,7 @@ def build_monthly_listen_sec_stmt(user_id: str, cutoff: datetime):
             ),
             ~exists(
                 select(IgnoredTrack).where(
-                    IgnoredTrack.user_id == user_id,
+                    IgnoredTrack.user_id == viewer_id,
                     IgnoredTrack.track_id == Play.track_id,
                 )
             ),
@@ -163,7 +174,7 @@ def build_monthly_listen_sec_stmt(user_id: str, cutoff: datetime):
                 select(IgnoredArtist)
                 .join(TrackArtist, TrackArtist.artist_id == IgnoredArtist.artist_id)
                 .where(
-                    IgnoredArtist.user_id == user_id,
+                    IgnoredArtist.user_id == viewer_id,
                     TrackArtist.track_id == Play.track_id,
                 )
             ),
@@ -171,7 +182,11 @@ def build_monthly_listen_sec_stmt(user_id: str, cutoff: datetime):
     )
 
 
-def build_top_tracks_last_30_stmt(user_id: str, cutoff: datetime):
+def build_top_tracks_last_30_stmt(
+    user_id: str, cutoff: datetime, viewer_id: str | None = None
+):
+    if viewer_id is None:
+        viewer_id = user_id
     return (
         select(Play.track_id, func.count().label("cnt"))
         .where(
@@ -191,7 +206,7 @@ def build_top_tracks_last_30_stmt(user_id: str, cutoff: datetime):
             ),
             ~exists(
                 select(IgnoredTrack).where(
-                    IgnoredTrack.user_id == user_id,
+                    IgnoredTrack.user_id == viewer_id,
                     IgnoredTrack.track_id == Play.track_id,
                 )
             ),
@@ -199,7 +214,7 @@ def build_top_tracks_last_30_stmt(user_id: str, cutoff: datetime):
                 select(IgnoredArtist)
                 .join(TrackArtist, TrackArtist.artist_id == IgnoredArtist.artist_id)
                 .where(
-                    IgnoredArtist.user_id == user_id,
+                    IgnoredArtist.user_id == viewer_id,
                     TrackArtist.track_id == Play.track_id,
                 )
             ),
@@ -210,7 +225,9 @@ def build_top_tracks_last_30_stmt(user_id: str, cutoff: datetime):
     )
 
 
-def build_top_tracks_all_time_stmt(user_id: str):
+def build_top_tracks_all_time_stmt(user_id: str, viewer_id: str | None = None):
+    if viewer_id is None:
+        viewer_id = user_id
     return (
         select(Play.track_id, func.count().label("cnt"))
         .where(
@@ -229,7 +246,7 @@ def build_top_tracks_all_time_stmt(user_id: str):
             ),
             ~exists(
                 select(IgnoredTrack).where(
-                    IgnoredTrack.user_id == user_id,
+                    IgnoredTrack.user_id == viewer_id,
                     IgnoredTrack.track_id == Play.track_id,
                 )
             ),
@@ -237,7 +254,7 @@ def build_top_tracks_all_time_stmt(user_id: str):
                 select(IgnoredArtist)
                 .join(TrackArtist, TrackArtist.artist_id == IgnoredArtist.artist_id)
                 .where(
-                    IgnoredArtist.user_id == user_id,
+                    IgnoredArtist.user_id == viewer_id,
                     TrackArtist.track_id == Play.track_id,
                 )
             ),
@@ -248,7 +265,9 @@ def build_top_tracks_all_time_stmt(user_id: str):
     )
 
 
-def build_top_artists_stmt(user_id: str):
+def build_top_artists_stmt(user_id: str, viewer_id: str | None = None):
+    if viewer_id is None:
+        viewer_id = user_id
     return (
         select(Artist.id, Artist.name, func.count().label("cnt"))
         .select_from(Play)
@@ -269,13 +288,13 @@ def build_top_artists_stmt(user_id: str):
             ),
             ~exists(
                 select(IgnoredTrack).where(
-                    IgnoredTrack.user_id == user_id,
+                    IgnoredTrack.user_id == viewer_id,
                     IgnoredTrack.track_id == Play.track_id,
                 )
             ),
             ~exists(
                 select(IgnoredArtist).where(
-                    IgnoredArtist.user_id == user_id,
+                    IgnoredArtist.user_id == viewer_id,
                     IgnoredArtist.artist_id == TrackArtist.artist_id,
                 )
             ),
@@ -286,7 +305,9 @@ def build_top_artists_stmt(user_id: str):
     )
 
 
-def build_most_played_decade_stmt(user_id: str):
+def build_most_played_decade_stmt(user_id: str, viewer_id: str | None = None):
+    if viewer_id is None:
+        viewer_id = user_id
     return (
         select(func.substr(Album.release_date, 1, 3).label("century"), func.count())
         .select_from(Play)
@@ -309,7 +330,7 @@ def build_most_played_decade_stmt(user_id: str):
             ),
             ~exists(
                 select(IgnoredTrack).where(
-                    IgnoredTrack.user_id == user_id,
+                    IgnoredTrack.user_id == viewer_id,
                     IgnoredTrack.track_id == Play.track_id,
                 )
             ),
@@ -317,7 +338,7 @@ def build_most_played_decade_stmt(user_id: str):
                 select(IgnoredArtist)
                 .join(TrackArtist, TrackArtist.artist_id == IgnoredArtist.artist_id)
                 .where(
-                    IgnoredArtist.user_id == user_id,
+                    IgnoredArtist.user_id == viewer_id,
                     TrackArtist.track_id == Play.track_id,
                 )
             ),
@@ -333,12 +354,19 @@ def build_tracking_since_stmt(user_id: str):
 
 
 @router.get("/user/{username}/public")
-async def get_public_profile(username: str, db: Session = Depends(get_session)):
+async def get_public_profile(
+    username: str,
+    db: Session = Depends(get_session),
+    viewer: User = Depends(get_current_user),
+):
     # Find user by username
     user = db.exec(select(User).where(User.username == username)).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-
+    if viewer is None:
+        viewer_id = user.id
+    else:
+        viewer_id = viewer.id
     user_info = {
         "id": user.id,
         "name": user.name,
@@ -348,15 +376,17 @@ async def get_public_profile(username: str, db: Session = Depends(get_session)):
     }
 
     # Playback Stats (use query builders)
-    total_plays = db.exec(build_total_plays_stmt(user.id)).one() or 0
+    total_plays = db.exec(build_total_plays_stmt(user.id, viewer_id)).one() or 0
 
-    total_likes = db.exec(build_total_likes_stmt(user.id)).one() or 0
+    total_likes = db.exec(build_total_likes_stmt(user.id, viewer_id)).one() or 0
 
-    total_listen_sec = db.exec(build_total_listen_sec_stmt(user.id)).one() or 0
+    total_listen_sec = (
+        db.exec(build_total_listen_sec_stmt(user.id, viewer_id)).one() or 0
+    )
 
     cutoff = datetime.now(timezone.utc) - timedelta(days=30)
     monthly_listen_sec = (
-        db.exec(build_monthly_listen_sec_stmt(user.id, cutoff)).one() or 0
+        db.exec(build_monthly_listen_sec_stmt(user.id, cutoff, viewer_id)).one() or 0
     )
 
     # Tracking since (oldest play date)
@@ -439,7 +469,7 @@ async def get_public_profile(username: str, db: Session = Depends(get_session)):
         return out
 
     # Top 5 songs last 30 days
-    rows_30 = db.exec(build_top_tracks_last_30_stmt(user.id, cutoff)).all()
+    rows_30 = db.exec(build_top_tracks_last_30_stmt(user.id, cutoff, viewer_id)).all()
 
     top_tracks_30: list[dict[str, Any]] = []
     if rows_30:
@@ -452,7 +482,7 @@ async def get_public_profile(username: str, db: Session = Depends(get_session)):
         top_tracks_30 = hydrated_30
 
     # Top 5 songs all time (use query builder)
-    rows_all = db.exec(build_top_tracks_all_time_stmt(user.id)).all()
+    rows_all = db.exec(build_top_tracks_all_time_stmt(user.id, viewer_id)).all()
 
     top_tracks_all: list[dict[str, Any]] = []
     if rows_all:
@@ -464,14 +494,14 @@ async def get_public_profile(username: str, db: Session = Depends(get_session)):
         top_tracks_all = hydrated_all
 
     # Top 5 artists by play count
-    rows_artists = db.exec(build_top_artists_stmt(user.id)).all()
+    rows_artists = db.exec(build_top_artists_stmt(user.id, viewer_id)).all()
     top_artists = [
         {"artist_id": aid, "name": name, "play_count": int(cnt)}
         for (aid, name, cnt) in rows_artists
     ]
 
     # Most played decade
-    rows_decade = db.exec(build_most_played_decade_stmt(user.id)).all()
+    rows_decade = db.exec(build_most_played_decade_stmt(user.id, viewer_id)).all()
     most_played_decade = None
     if rows_decade:
         century = rows_decade[0][0]
