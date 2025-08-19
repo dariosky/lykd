@@ -3,7 +3,7 @@
 import logging
 import secrets
 from functools import partial
-from typing import Any, AsyncGenerator, Dict
+from typing import Any, AsyncGenerator
 from urllib.parse import urlencode
 
 import httpx
@@ -167,7 +167,7 @@ class Spotify:
         return auth_url, state
 
     @spotify_retry()
-    async def exchange_code_for_token(self, code: str) -> Dict[str, Any]:
+    async def exchange_code_for_token(self, code: str) -> dict[str, Any]:
         """Exchange authorization code for access token"""
         token_url = "https://accounts.spotify.com/api/token"  # nosec: B105:hardcoded_password_string
 
@@ -187,7 +187,7 @@ class Spotify:
         return response.json()
 
     @spotify_retry()
-    async def get_user_info(self, access_token: str) -> Dict[str, Any]:
+    async def get_user_info(self, access_token: str) -> dict[str, Any]:
         """Get user information from Spotify API"""
         headers = {"Authorization": f"Bearer {access_token}"}
 
@@ -201,7 +201,7 @@ class Spotify:
         return response.json()
 
     @spotify_retry()
-    async def refresh_token(self, *, user: User) -> Dict[str, Any]:
+    async def refresh_token(self, *, user: User) -> dict[str, Any]:
         """Refresh access token using refresh token"""
         refresh_token = user.get_refresh_token()
         response = await self.client.post(
@@ -230,8 +230,8 @@ class Spotify:
     )
     @spotify_retry()
     async def get_page(
-        self, *, url: str, user: "User", params: Dict[str, Any] | None = None
-    ) -> Dict[str, Any]:
+        self, *, url: str, user: "User", params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Get a page given an endpoint in the Spotify API"""
         response = await self.client.get(
             url, headers=self.get_headers(user), params=params
@@ -244,7 +244,7 @@ class Spotify:
 
     async def get_liked_page(
         self, *, user: "User", next_page: str | None = None, limit: int = 50
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         url = next_page or "https://api.spotify.com/v1/me/tracks"
         logger.debug(f"Fetching liked page for {user} - {url}")
         return await self.get_page(
@@ -255,7 +255,7 @@ class Spotify:
 
     async def get_recently_played_page(
         self, *, user: "User", next_page: str | None = None, limit: int = 50
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         url = next_page or "https://api.spotify.com/v1/me/player/recently-played"
         logger.debug(f"Fetching recent page for {user} - {url}")
         return await self.get_page(
@@ -264,7 +264,7 @@ class Spotify:
 
     async def get_playlists_page(
         self, *, user: "User", next_page: str | None = None, limit: int = 50
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         url = next_page or "https://api.spotify.com/v1/me/playlists"
         logger.debug(f"Fetching user playlists for {user}: {url}")
         return await self.get_page(
@@ -290,7 +290,7 @@ class Spotify:
         )
 
     @staticmethod
-    async def get_all(*, user: User, request, limit=50) -> list[Dict[str, Any]]:
+    async def get_all(*, user: User, request, limit=50) -> list[dict[str, Any]]:
         """Get all liked songs for a user by iterating through all pages"""
         items = []
         next_page = None

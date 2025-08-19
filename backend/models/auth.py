@@ -2,7 +2,7 @@
 
 import datetime
 import re
-from typing import Dict, Any
+from typing import Any
 
 from sqlalchemy import func
 from sqlmodel import SQLModel, Field, Column, JSON, Session, select
@@ -18,7 +18,7 @@ class User(SQLModel, CamelModel, table=True):
     email: str = Field(unique=True, index=True)
     username: str | None = Field(default=None, index=True, unique=True, nullable=True)
     picture: str | None = None
-    tokens: Dict[str, Any] | None = Field(default_factory=dict, sa_column=Column(JSON))
+    tokens: dict[str, Any] | None = Field(default_factory=dict, sa_column=Column(JSON))
     join_date: datetime.datetime = Field(
         default_factory=lambda: datetime.datetime.now(datetime.timezone.utc),
         sa_column=Column(UtcAwareDateTime(), nullable=False),

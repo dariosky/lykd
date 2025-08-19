@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
@@ -19,7 +18,7 @@ class SlackBot:
         else:
             self.client = None
 
-    def send_message(self, text: str, channel: Optional[str] = None) -> bool:
+    def send_message(self, text: str, channel: str | None = None) -> bool:
         target_channel = channel or self.channel
         if not self.client:
             logger.info(text)

@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from typing import List, Dict, Any, Tuple
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, exists
@@ -15,6 +15,8 @@ from models.music import (
     Album,
     IgnoredTrack,
     IgnoredArtist,
+    GlobalIgnoredTrack,
+    GlobalIgnoredArtist,
 )
 from models.common import get_session
 
@@ -28,6 +30,18 @@ def build_total_plays_stmt(user_id: str):
         .select_from(Play)
         .where(
             Play.user_id == user_id,
+            ~exists(
+                select(GlobalIgnoredTrack).where(
+                    GlobalIgnoredTrack.track_id == Play.track_id
+                )
+            ),
+            ~exists(
+                select(GlobalIgnoredArtist)
+                .join(
+                    TrackArtist, TrackArtist.artist_id == GlobalIgnoredArtist.artist_id
+                )
+                .where(TrackArtist.track_id == Play.track_id)
+            ),
             ~exists(
                 select(IgnoredTrack).where(
                     IgnoredTrack.user_id == user_id,
@@ -53,6 +67,18 @@ def build_total_likes_stmt(user_id: str):
         .where(
             Like.user_id == user_id,
             ~exists(
+                select(GlobalIgnoredTrack).where(
+                    GlobalIgnoredTrack.track_id == Like.track_id
+                )
+            ),
+            ~exists(
+                select(GlobalIgnoredArtist)
+                .join(
+                    TrackArtist, TrackArtist.artist_id == GlobalIgnoredArtist.artist_id
+                )
+                .where(TrackArtist.track_id == Like.track_id)
+            ),
+            ~exists(
                 select(IgnoredTrack).where(
                     IgnoredTrack.user_id == user_id,
                     IgnoredTrack.track_id == Like.track_id,
@@ -77,6 +103,18 @@ def build_total_listen_sec_stmt(user_id: str):
         .join(Track, Track.id == Play.track_id)
         .where(
             Play.user_id == user_id,
+            ~exists(
+                select(GlobalIgnoredTrack).where(
+                    GlobalIgnoredTrack.track_id == Play.track_id
+                )
+            ),
+            ~exists(
+                select(GlobalIgnoredArtist)
+                .join(
+                    TrackArtist, TrackArtist.artist_id == GlobalIgnoredArtist.artist_id
+                )
+                .where(TrackArtist.track_id == Play.track_id)
+            ),
             ~exists(
                 select(IgnoredTrack).where(
                     IgnoredTrack.user_id == user_id,
@@ -104,6 +142,18 @@ def build_monthly_listen_sec_stmt(user_id: str, cutoff: datetime):
             Play.user_id == user_id,
             Play.date >= cutoff,
             ~exists(
+                select(GlobalIgnoredTrack).where(
+                    GlobalIgnoredTrack.track_id == Play.track_id
+                )
+            ),
+            ~exists(
+                select(GlobalIgnoredArtist)
+                .join(
+                    TrackArtist, TrackArtist.artist_id == GlobalIgnoredArtist.artist_id
+                )
+                .where(TrackArtist.track_id == Play.track_id)
+            ),
+            ~exists(
                 select(IgnoredTrack).where(
                     IgnoredTrack.user_id == user_id,
                     IgnoredTrack.track_id == Play.track_id,
@@ -127,6 +177,18 @@ def build_top_tracks_last_30_stmt(user_id: str, cutoff: datetime):
         .where(
             Play.user_id == user_id,
             Play.date >= cutoff,
+            ~exists(
+                select(GlobalIgnoredTrack).where(
+                    GlobalIgnoredTrack.track_id == Play.track_id
+                )
+            ),
+            ~exists(
+                select(GlobalIgnoredArtist)
+                .join(
+                    TrackArtist, TrackArtist.artist_id == GlobalIgnoredArtist.artist_id
+                )
+                .where(TrackArtist.track_id == Play.track_id)
+            ),
             ~exists(
                 select(IgnoredTrack).where(
                     IgnoredTrack.user_id == user_id,
@@ -153,6 +215,18 @@ def build_top_tracks_all_time_stmt(user_id: str):
         select(Play.track_id, func.count().label("cnt"))
         .where(
             Play.user_id == user_id,
+            ~exists(
+                select(GlobalIgnoredTrack).where(
+                    GlobalIgnoredTrack.track_id == Play.track_id
+                )
+            ),
+            ~exists(
+                select(GlobalIgnoredArtist)
+                .join(
+                    TrackArtist, TrackArtist.artist_id == GlobalIgnoredArtist.artist_id
+                )
+                .where(TrackArtist.track_id == Play.track_id)
+            ),
             ~exists(
                 select(IgnoredTrack).where(
                     IgnoredTrack.user_id == user_id,
@@ -184,6 +258,16 @@ def build_top_artists_stmt(user_id: str):
         .where(
             Play.user_id == user_id,
             ~exists(
+                select(GlobalIgnoredTrack).where(
+                    GlobalIgnoredTrack.track_id == Play.track_id
+                )
+            ),
+            ~exists(
+                select(GlobalIgnoredArtist).where(
+                    GlobalIgnoredArtist.artist_id == TrackArtist.artist_id
+                )
+            ),
+            ~exists(
                 select(IgnoredTrack).where(
                     IgnoredTrack.user_id == user_id,
                     IgnoredTrack.track_id == Play.track_id,
@@ -211,6 +295,18 @@ def build_most_played_decade_stmt(user_id: str):
         .where(
             Play.user_id == user_id,
             Album.release_date.is_not(None),
+            ~exists(
+                select(GlobalIgnoredTrack).where(
+                    GlobalIgnoredTrack.track_id == Play.track_id
+                )
+            ),
+            ~exists(
+                select(GlobalIgnoredArtist)
+                .join(
+                    TrackArtist, TrackArtist.artist_id == GlobalIgnoredArtist.artist_id
+                )
+                .where(TrackArtist.track_id == Play.track_id)
+            ),
             ~exists(
                 select(IgnoredTrack).where(
                     IgnoredTrack.user_id == user_id,
@@ -272,12 +368,12 @@ async def get_public_profile(username: str, db: Session = Depends(get_session)):
     )
 
     # Helpers to batch hydrate track details (artists + album) preserving order
-    def _hydrate_tracks(track_id_order: List[str]) -> List[Dict[str, Any]]:
+    def _hydrate_tracks(track_id_order: list[str]) -> list[dict[str, Any]]:
         if not track_id_order:
             return []
 
         # Fetch tracks with album info in bulk
-        track_rows: List[Tuple[str, str, int, str | None, str | None, Any | None]] = (
+        track_rows: list[tuple[str, str, int, str | None, str | None, Any | None]] = (
             db.exec(
                 select(
                     Track.id,
@@ -321,18 +417,18 @@ async def get_public_profile(username: str, db: Session = Depends(get_session)):
         }
 
         # Fetch artists for all tracks in bulk
-        artist_rows: List[Tuple[str, str]] = db.exec(
+        artist_rows: list[tuple[str, str]] = db.exec(
             select(TrackArtist.track_id, Artist.name)
             .join(Artist, Artist.id == TrackArtist.artist_id)
             .where(TrackArtist.track_id.in_(track_id_order))
         ).all()
 
-        artists_map: Dict[str, List[str]] = {}
+        artists_map: dict[str, list[str]] = {}
         for tid, aname in artist_rows:
             artists_map.setdefault(tid, []).append(aname)
 
         # Build list in the incoming order
-        out: List[Dict[str, Any]] = []
+        out: list[dict[str, Any]] = []
         for tid in track_id_order:
             base = tracks_info.get(tid)
             if not base:
@@ -345,7 +441,7 @@ async def get_public_profile(username: str, db: Session = Depends(get_session)):
     # Top 5 songs last 30 days
     rows_30 = db.exec(build_top_tracks_last_30_stmt(user.id, cutoff)).all()
 
-    top_tracks_30: List[Dict[str, Any]] = []
+    top_tracks_30: list[dict[str, Any]] = []
     if rows_30:
         track_ids_30 = [tid for (tid, _) in rows_30]
         cnt_map_30 = {tid: int(cnt) for (tid, cnt) in rows_30}
@@ -358,7 +454,7 @@ async def get_public_profile(username: str, db: Session = Depends(get_session)):
     # Top 5 songs all time (use query builder)
     rows_all = db.exec(build_top_tracks_all_time_stmt(user.id)).all()
 
-    top_tracks_all: List[Dict[str, Any]] = []
+    top_tracks_all: list[dict[str, Any]] = []
     if rows_all:
         track_ids_all = [tid for (tid, _) in rows_all]
         cnt_map_all = {tid: int(cnt) for (tid, cnt) in rows_all}

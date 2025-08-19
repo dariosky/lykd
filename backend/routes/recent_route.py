@@ -1,21 +1,23 @@
 from datetime import datetime, timezone, timedelta
-from typing import List, Dict, Any, Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.sql import or_, and_, exists
+from sqlalchemy.sql import and_, exists, or_
 from sqlmodel import Session, select
 
 from models.auth import User
 from models.common import get_session
 from models.friendship import Friendship, FriendshipStatus
 from models.music import (
+    Album,
+    Artist,
+    GlobalIgnoredArtist,
+    GlobalIgnoredTrack,
+    IgnoredArtist,
+    IgnoredTrack,
     Play,
     Track,
     TrackArtist,
-    Artist,
-    Album,
-    IgnoredTrack,
-    IgnoredArtist,
 )
 from routes.deps import current_user
 
@@ -32,11 +34,11 @@ def _parse_before(before: Optional[str]) -> Optional[datetime]:
         return None
 
 
-def _friends_ids(session: Session, me_id: str) -> List[str]:
+def _friends_ids(session: Session, me_id: str) -> list[str]:
     rows = session.exec(
         select(Friendship).where(Friendship.status == FriendshipStatus.accepted)
     ).all()
-    out: List[str] = []
+    out: list[str] = []
     for fr in rows:
         if me_id == fr.user_low_id:
             out.append(fr.user_high_id)
@@ -95,15 +97,25 @@ async def recent_activity(
                 # No friends, force empty result fast
                 qsel = qsel.where(Play.user_id == "__none__")
 
-    # Exclude items ignored by current user (by track or by any artist)
+    # Exclude items ignored globally or by current user (by track or by any artist)
     if not show_ignored:
-        ignore_track_clause = exists(
+        ignore_global_track = exists(
+            select(GlobalIgnoredTrack).where(
+                GlobalIgnoredTrack.track_id == Play.track_id
+            )
+        )
+        ignore_global_artist = exists(
+            select(GlobalIgnoredArtist)
+            .join(TrackArtist, TrackArtist.artist_id == GlobalIgnoredArtist.artist_id)
+            .where(TrackArtist.track_id == Play.track_id)
+        )
+        ignore_user_track = exists(
             select(IgnoredTrack).where(
                 IgnoredTrack.user_id == current_user.id,
                 IgnoredTrack.track_id == Play.track_id,
             )
         )
-        ignore_artist_clause = exists(
+        ignore_user_artist = exists(
             select(IgnoredArtist)
             .join(TrackArtist, TrackArtist.artist_id == IgnoredArtist.artist_id)
             .where(
@@ -111,7 +123,12 @@ async def recent_activity(
                 TrackArtist.track_id == Play.track_id,
             )
         )
-        qsel = qsel.where(~ignore_track_clause, ~ignore_artist_clause)
+        qsel = qsel.where(
+            ~ignore_global_track,
+            ~ignore_global_artist,
+            ~ignore_user_track,
+            ~ignore_user_artist,
+        )
 
     # Free-text search across fields
     def _date_range_for_token(tok: str) -> Optional[tuple[datetime, datetime]]:
@@ -186,7 +203,7 @@ async def recent_activity(
                 )
 
     qsel = qsel.limit(limit)
-    plays: List[Play] = session.exec(qsel).all()
+    plays: list[Play] = session.exec(qsel).all()
 
     if not plays:
         return {"items": [], "next_before": None}
@@ -195,18 +212,18 @@ async def recent_activity(
     user_ids = list({p.user_id for p in plays})
     track_ids = list({p.track_id for p in plays})
 
-    users_map: Dict[str, User] = {
+    users_map: dict[str, User] = {
         u.id: u for u in session.exec(select(User).where(User.id.in_(user_ids))).all()
     }
 
-    tracks: List[Track] = session.exec(
+    tracks: list[Track] = session.exec(
         select(Track).where(Track.id.in_(track_ids))
     ).all()
-    tracks_map: Dict[str, Track] = {t.id: t for t in tracks}
+    tracks_map: dict[str, Track] = {t.id: t for t in tracks}
 
     # Album info
     album_ids = [t.album_id for t in tracks if t.album_id]
-    albums_map: Dict[str, Album] = {
+    albums_map: dict[str, Album] = {
         a.id: a
         for a in session.exec(select(Album).where(Album.id.in_(album_ids))).all()
     }
@@ -216,11 +233,11 @@ async def recent_activity(
         select(TrackArtist).where(TrackArtist.track_id.in_(track_ids))
     ).all()
     artist_ids = list({ta.artist_id for ta in ta_rows})
-    artists_map: Dict[str, Artist] = {
+    artists_map: dict[str, Artist] = {
         a.id: a
         for a in session.exec(select(Artist).where(Artist.id.in_(artist_ids))).all()
     }
-    track_artists: Dict[str, List[str]] = {}
+    track_artists: dict[str, list[str]] = {}
     for ta in ta_rows:
         track_artists.setdefault(ta.track_id, []).append(
             artists_map.get(ta.artist_id).name
@@ -232,7 +249,7 @@ async def recent_activity(
         track_artists[k] = [x for x in v if x]
 
     # Build items
-    items: List[Dict[str, Any]] = []
+    items: list[dict[str, Any]] = []
     for p in plays:
         u = users_map.get(p.user_id)
         t = tracks_map.get(p.track_id)

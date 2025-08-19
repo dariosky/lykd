@@ -4,7 +4,16 @@ from sqlalchemy import func
 
 from models.auth import User
 from models.common import get_session
-from models.music import IgnoredTrack, IgnoredArtist, Track, Artist, TrackArtist, Album
+from models.music import (
+    IgnoredTrack,
+    IgnoredArtist,
+    Track,
+    Artist,
+    TrackArtist,
+    Album,
+    GlobalIgnoredTrack,
+    GlobalIgnoredArtist,
+)
 from routes.deps import current_user
 
 router = APIRouter()
@@ -110,6 +119,26 @@ async def unignore_track(
     return {"message": "unignored"}
 
 
+@router.post("/ignore/track/{track_id}/report")
+async def report_ignored_track(
+    track_id: str,
+    session: Session = Depends(get_session),
+    user: User | None = Depends(current_user),
+):
+    if not session.get(Track, track_id):
+        raise HTTPException(status_code=404, detail="Track not found")
+
+    obj = session.get(IgnoredTrack, (user.id, track_id))
+    if not obj:
+        obj = IgnoredTrack(user_id=user.id, track_id=track_id, reported=True)
+        session.add(obj)
+    else:
+        obj.reported = True
+        session.add(obj)
+    session.commit()
+    return {"message": "reported"}
+
+
 @router.post("/ignore/artist/{artist_id}")
 async def ignore_artist(
     artist_id: str,
@@ -137,3 +166,60 @@ async def unignore_artist(
         session.delete(obj)
         session.commit()
     return {"message": "unignored"}
+
+
+@router.post("/ignore/artist/{artist_id}/report")
+async def report_ignored_artist(
+    artist_id: str,
+    session: Session = Depends(get_session),
+    user: User | None = Depends(current_user),
+):
+    if not session.get(Artist, artist_id):
+        raise HTTPException(status_code=404, detail="Artist not found")
+
+    obj = session.get(IgnoredArtist, (user.id, artist_id))
+    if not obj:
+        obj = IgnoredArtist(user_id=user.id, artist_id=artist_id, reported=True)
+        session.add(obj)
+    else:
+        obj.reported = True
+        session.add(obj)
+    session.commit()
+    return {"message": "reported"}
+
+
+# Admin endpoints to approve global ignores
+@router.post("/admin/ignore/track/{track_id}/approve")
+async def admin_approve_track(
+    track_id: str,
+    session: Session = Depends(get_session),
+    admin: User | None = Depends(current_user),
+):
+    if not admin or not admin.is_admin:
+        raise HTTPException(status_code=403, detail="Admin required")
+    if not session.get(Track, track_id):
+        raise HTTPException(status_code=404, detail="Track not found")
+
+    existing = session.get(GlobalIgnoredTrack, track_id)
+    if not existing:
+        session.add(GlobalIgnoredTrack(track_id=track_id, approved_by=admin.id))
+    session.commit()
+    return {"message": "approved"}
+
+
+@router.post("/admin/ignore/artist/{artist_id}/approve")
+async def admin_approve_artist(
+    artist_id: str,
+    session: Session = Depends(get_session),
+    admin: User | None = Depends(current_user),
+):
+    if not admin or not admin.is_admin:
+        raise HTTPException(status_code=403, detail="Admin required")
+    if not session.get(Artist, artist_id):
+        raise HTTPException(status_code=404, detail="Artist not found")
+
+    existing = session.get(GlobalIgnoredArtist, artist_id)
+    if not existing:
+        session.add(GlobalIgnoredArtist(artist_id=artist_id, approved_by=admin.id))
+    session.commit()
+    return {"message": "approved"}

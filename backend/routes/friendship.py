@@ -1,5 +1,3 @@
-from typing import List
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 
@@ -70,7 +68,7 @@ async def pending_requests(
     user: User | None = Depends(current_user),
 ):
     # Incoming requests to current_user
-    rows: List[Friendship] = session.exec(
+    rows: list[Friendship] = session.exec(
         select(Friendship).where(Friendship.status == FriendshipStatus.pending)
     ).all()
 

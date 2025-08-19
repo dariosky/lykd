@@ -40,7 +40,7 @@ function ErrorPage({
       case "spotify":
         return "🙉 Spotify Connection Failed";
       case "api":
-        return "🫥 Request Failed";
+        return "🫥 Something went wrong";
       case "network":
         return "🔌 Network Error";
       default:
