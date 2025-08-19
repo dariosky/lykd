@@ -2,7 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import Layout from "./Layout";
 import { apiService, queryKeys, IgnoredListResponse } from "./api";
-import { UnignoreArtistButton, UnignoreTrackButton } from "./IgnoreButtons";
+import {
+  UnignoreArtistButton,
+  UnignoreTrackButton,
+  ReportArtistButton,
+  ReportTrackButton,
+} from "./IgnoreButtons";
 import "./IgnoredPage.css";
 
 export default function IgnoredPage() {
@@ -65,6 +70,12 @@ export default function IgnoredPage() {
                         <div className="ignored-subtitle">Artist</div>
                       </div>
                       <div className="ignored-actions">
+                        <ReportArtistButton
+                          artistId={artist.artist_id}
+                          artistName={artist.name}
+                          title="Request global ignore"
+                          className="mr-2"
+                        />
                         <UnignoreArtistButton
                           artistId={artist.artist_id}
                           artistName={artist.name}
@@ -107,6 +118,11 @@ export default function IgnoredPage() {
                         </div>
                       </div>
                       <div className="ignored-actions">
+                        <ReportTrackButton
+                          trackId={track.track_id}
+                          title="Request global ignore"
+                          className="mr-2"
+                        />
                         <UnignoreTrackButton trackId={track.track_id} />
                       </div>
                     </li>

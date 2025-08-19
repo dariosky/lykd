@@ -6,6 +6,7 @@ import {
   queryKeys,
   UserResponse,
   PendingRequestsResponse,
+  ReportsResponse,
 } from "./api";
 import "./Layout.css";
 
@@ -18,6 +19,7 @@ function Layout({ children }: LayoutProps) {
   const queryClient = useQueryClient();
   const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
   const [isNotifOpen, setIsNotifOpen] = React.useState(false);
+  const [isAdminOpen, setIsAdminOpen] = React.useState(false);
 
   // Current user query
   const { data: userResponse, refetch: refetchUser } = useQuery<
@@ -45,6 +47,17 @@ function Layout({ children }: LayoutProps) {
   });
   const pending = pendingResp?.pending ?? [];
 
+  // Admin reports
+  const { data: reports } = useQuery<ReportsResponse, Error>({
+    queryKey: queryKeys.reports,
+    queryFn: apiService.getReports,
+    enabled: !!currentUser?.is_admin,
+    staleTime: 10 * 1000,
+    refetchInterval: 30 * 1000,
+  });
+  const totalReports =
+    (reports?.tracks.length ?? 0) + (reports?.artists.length ?? 0);
+
   // Accept / Decline mutations
   const acceptMutation = useMutation({
     mutationFn: (username: string) => apiService.acceptFriendRequest(username),
@@ -64,6 +77,28 @@ function Layout({ children }: LayoutProps) {
         queryKey: queryKeys.friendshipStatus(username),
       });
     },
+  });
+
+  // Admin approve/reject mutations
+  const approveTrack = useMutation({
+    mutationFn: (trackId: string) => apiService.approveTrackReport(trackId),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: queryKeys.reports }),
+  });
+  const rejectTrack = useMutation({
+    mutationFn: (trackId: string) => apiService.rejectTrackReport(trackId),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: queryKeys.reports }),
+  });
+  const approveArtist = useMutation({
+    mutationFn: (artistId: string) => apiService.approveArtistReport(artistId),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: queryKeys.reports }),
+  });
+  const rejectArtist = useMutation({
+    mutationFn: (artistId: string) => apiService.rejectArtistReport(artistId),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: queryKeys.reports }),
   });
 
   // Logout mutation
@@ -116,13 +151,16 @@ function Layout({ children }: LayoutProps) {
       if (!target.closest(".notif-dropdown-container")) {
         setIsNotifOpen(false);
       }
+      if (!target.closest(".admin-dropdown-container")) {
+        setIsAdminOpen(false);
+      }
     };
 
-    if (isDropdownOpen || isNotifOpen) {
+    if (isDropdownOpen || isNotifOpen || isAdminOpen) {
       document.addEventListener("click", handleClickOutside);
       return () => document.removeEventListener("click", handleClickOutside);
     }
-  }, [isDropdownOpen, isNotifOpen]);
+  }, [isDropdownOpen, isNotifOpen, isAdminOpen]);
 
   // Check for success parameter on mount and refetch user
   React.useEffect(() => {
@@ -228,6 +266,127 @@ function Layout({ children }: LayoutProps) {
                   </div>
                 )}
               </div>
+
+              {/* Admin reports */}
+              {currentUser.is_admin && (
+                <div className="admin-dropdown-container">
+                  <button
+                    className="notif-button"
+                    onClick={() => setIsAdminOpen(!isAdminOpen)}
+                    aria-label="Pending reports"
+                    title="Pending global ignore reports"
+                  >
+                    🛡️
+                    {totalReports > 0 && (
+                      <span
+                        className="notif-badge"
+                        aria-label={`${totalReports} pending`}
+                      >
+                        {totalReports}
+                      </span>
+                    )}
+                  </button>
+                  {isAdminOpen && (
+                    <div className="notif-dropdown">
+                      <div className="notif-title">Pending reports</div>
+                      <div className="notif-subtitle">Artists</div>
+                      {reports?.artists.length ? (
+                        <ul className="notif-list">
+                          {reports.artists.map((a) => (
+                            <li key={a.artist_id} className="notif-item">
+                              <div className="notif-user-meta">
+                                <div className="notif-name">{a.name}</div>
+                                <div className="notif-username">
+                                  {a.report_count} reports
+                                </div>
+                              </div>
+                              <div className="notif-actions">
+                                <button
+                                  className="btn-accept"
+                                  onClick={() =>
+                                    approveArtist.mutate(a.artist_id)
+                                  }
+                                  disabled={approveArtist.isPending}
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  className="btn-decline"
+                                  onClick={() =>
+                                    rejectArtist.mutate(a.artist_id)
+                                  }
+                                  disabled={rejectArtist.isPending}
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="empty-state small">
+                          No artist reports
+                        </div>
+                      )}
+
+                      <div className="notif-subtitle mt-2">Tracks</div>
+                      {reports?.tracks.length ? (
+                        <ul className="notif-list">
+                          {reports.tracks.map((t) => (
+                            <li key={t.track_id} className="notif-item">
+                              <div className="notif-user">
+                                {t.album?.picture ? (
+                                  <img
+                                    className="notif-avatar"
+                                    src={t.album.picture}
+                                    alt={t.album?.name ?? "Album"}
+                                  />
+                                ) : (
+                                  <div className="notif-avatar placeholder">
+                                    🎵
+                                  </div>
+                                )}
+                                <div className="notif-user-meta">
+                                  <div className="notif-name">{t.title}</div>
+                                  <div className="notif-username">
+                                    {t.artists.join(", ")}
+                                    {t.album?.name ? ` • ${t.album.name}` : ""}
+                                  </div>
+                                  <div className="notif-username">
+                                    {t.report_count} reports
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="notif-actions">
+                                <button
+                                  className="btn-accept"
+                                  onClick={() =>
+                                    approveTrack.mutate(t.track_id)
+                                  }
+                                  disabled={approveTrack.isPending}
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  className="btn-decline"
+                                  onClick={() => rejectTrack.mutate(t.track_id)}
+                                  disabled={rejectTrack.isPending}
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="empty-state small">
+                          No track reports
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="user-dropdown-container">
                 <button

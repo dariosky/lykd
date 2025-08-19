@@ -108,6 +108,24 @@ export interface IgnoredListResponse {
   artists: IgnoredArtistItem[];
 }
 
+// Admin reports
+export interface ReportTrackItem {
+  track_id: string;
+  title: string;
+  album?: { id: string; name: string; picture: string | null } | null;
+  artists: string[];
+  report_count: number;
+}
+export interface ReportArtistItem {
+  artist_id: string;
+  name: string;
+  report_count: number;
+}
+export interface ReportsResponse {
+  tracks: ReportTrackItem[];
+  artists: ReportArtistItem[];
+}
+
 // Recent activity
 export interface RecentTrack {
   id: string;
@@ -339,6 +357,15 @@ export const apiService = {
       throw new Error(`Failed to unignore track: ${response.status}`);
     return response.json();
   },
+  reportTrack: async (trackId: string): Promise<{ message: string }> => {
+    const response = await fetch(
+      `/api/ignore/track/${encodeURIComponent(trackId)}/report`,
+      { method: "POST", credentials: "include" },
+    );
+    if (!response.ok)
+      throw new Error(`Failed to report track: ${response.status}`);
+    return response.json();
+  },
   ignoreArtist: async (artistId: string): Promise<{ message: string }> => {
     const response = await fetch(
       `/api/ignore/artist/${encodeURIComponent(artistId)}`,
@@ -361,6 +388,63 @@ export const apiService = {
     );
     if (!response.ok)
       throw new Error(`Failed to unignore artist: ${response.status}`);
+    return response.json();
+  },
+  reportArtist: async (artistId: string): Promise<{ message: string }> => {
+    const response = await fetch(
+      `/api/ignore/artist/${encodeURIComponent(artistId)}/report`,
+      { method: "POST", credentials: "include" },
+    );
+    if (!response.ok)
+      throw new Error(`Failed to report artist: ${response.status}`);
+    return response.json();
+  },
+
+  // Admin report review
+  getReports: async (): Promise<ReportsResponse> => {
+    const response = await fetch(`/api/reports`, { credentials: "include" });
+    if (!response.ok)
+      throw new Error(`Failed to get reports: ${response.status}`);
+    return response.json();
+  },
+  approveTrackReport: async (trackId: string): Promise<{ message: string }> => {
+    const response = await fetch(
+      `/api/admin/ignore/track/${encodeURIComponent(trackId)}/approve`,
+      { method: "POST", credentials: "include" },
+    );
+    if (!response.ok)
+      throw new Error(`Failed to approve track: ${response.status}`);
+    return response.json();
+  },
+  rejectTrackReport: async (trackId: string): Promise<{ message: string }> => {
+    const response = await fetch(
+      `/api/admin/ignore/track/${encodeURIComponent(trackId)}/reject`,
+      { method: "POST", credentials: "include" },
+    );
+    if (!response.ok)
+      throw new Error(`Failed to reject track: ${response.status}`);
+    return response.json();
+  },
+  approveArtistReport: async (
+    artistId: string,
+  ): Promise<{ message: string }> => {
+    const response = await fetch(
+      `/api/admin/ignore/artist/${encodeURIComponent(artistId)}/approve`,
+      { method: "POST", credentials: "include" },
+    );
+    if (!response.ok)
+      throw new Error(`Failed to approve artist: ${response.status}`);
+    return response.json();
+  },
+  rejectArtistReport: async (
+    artistId: string,
+  ): Promise<{ message: string }> => {
+    const response = await fetch(
+      `/api/admin/ignore/artist/${encodeURIComponent(artistId)}/reject`,
+      { method: "POST", credentials: "include" },
+    );
+    if (!response.ok)
+      throw new Error(`Failed to reject artist: ${response.status}`);
     return response.json();
   },
 
@@ -433,4 +517,5 @@ export const queryKeys = {
       q ?? null,
     ] as const,
   ignored: ["ignore", "list"] as const,
+  reports: ["admin", "reports"] as const,
 };

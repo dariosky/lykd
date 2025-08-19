@@ -188,7 +188,99 @@ async def report_ignored_artist(
     return {"message": "reported"}
 
 
-# Admin endpoints to approve global ignores
+# Admin endpoints to approve/reject and list reports
+@router.get("/reports")
+async def list_reports(
+    session: Session = Depends(get_session),
+    admin: User | None = Depends(current_user),
+):
+    if not admin or not admin.is_admin:
+        raise HTTPException(status_code=403, detail="Admin required")
+
+    # Tracks that have been reported but not yet globally approved
+    artist_agg = func.string_agg(Artist.name, ",").label("artist_names")
+    stmt_track_reports = (
+        select(
+            Track.id,
+            Track.title,
+            Album.id,
+            Album.name,
+            Album.picture,
+            func.count(IgnoredTrack.user_id).label("report_count"),
+            artist_agg,
+        )
+        .select_from(IgnoredTrack)
+        .join(Track, Track.id == IgnoredTrack.track_id)
+        .join(Album, Album.id == Track.album_id, isouter=True)
+        .join(TrackArtist, TrackArtist.track_id == Track.id, isouter=True)
+        .join(Artist, Artist.id == TrackArtist.artist_id, isouter=True)
+        .outerjoin(
+            GlobalIgnoredTrack, GlobalIgnoredTrack.track_id == IgnoredTrack.track_id
+        )
+        .where(IgnoredTrack.reported.is_(True))
+        .where(GlobalIgnoredTrack.track_id.is_(None))
+        .group_by(Track.id, Track.title, Album.id, Album.name, Album.picture)
+        .order_by(func.max(IgnoredTrack.ts).desc())
+    )
+    track_rows = session.exec(stmt_track_reports).all()
+    track_reports = []
+    for (
+        track_id,
+        title,
+        album_id,
+        album_name,
+        album_picture,
+        report_count,
+        artist_names,
+    ) in track_rows:
+        artists_list = []
+        if artist_names:
+            artists_list = [s.strip() for s in str(artist_names).split(",") if s]
+        track_reports.append(
+            {
+                "track_id": track_id,
+                "title": title,
+                "album": (
+                    {"id": album_id, "name": album_name, "picture": album_picture}
+                    if album_id is not None
+                    else None
+                ),
+                "artists": artists_list,
+                "report_count": int(report_count or 0),
+            }
+        )
+
+    # Artists that have been reported but not yet globally approved
+    stmt_artist_reports = (
+        select(
+            Artist.id,
+            Artist.name,
+            func.count(IgnoredArtist.user_id).label("report_count"),
+        )
+        .select_from(IgnoredArtist)
+        .join(Artist, Artist.id == IgnoredArtist.artist_id)
+        .outerjoin(
+            GlobalIgnoredArtist,
+            GlobalIgnoredArtist.artist_id == IgnoredArtist.artist_id,
+        )
+        .where(IgnoredArtist.reported.is_(True))
+        .where(GlobalIgnoredArtist.artist_id.is_(None))
+        .group_by(Artist.id, Artist.name)
+        .order_by(func.max(IgnoredArtist.ts).desc())
+    )
+    artist_rows = session.exec(stmt_artist_reports).all()
+    artist_reports = [
+        {
+            "artist_id": artist_id,
+            "name": name,
+            "report_count": int(report_count or 0),
+        }
+        for (artist_id, name, report_count) in artist_rows
+    ]
+
+    return {"tracks": track_reports, "artists": artist_reports}
+
+
 @router.post("/admin/ignore/track/{track_id}/approve")
 async def admin_approve_track(
     track_id: str,
@@ -203,6 +295,14 @@ async def admin_approve_track(
     existing = session.get(GlobalIgnoredTrack, track_id)
     if not existing:
         session.add(GlobalIgnoredTrack(track_id=track_id, approved_by=admin.id))
+    # Clear reported flags for this track across all users
+    for it in session.exec(
+        select(IgnoredTrack).where(
+            IgnoredTrack.track_id == track_id, IgnoredTrack.reported.is_(True)
+        )
+    ):
+        it.reported = False
+        session.add(it)
     session.commit()
     return {"message": "approved"}
 
@@ -221,5 +321,59 @@ async def admin_approve_artist(
     existing = session.get(GlobalIgnoredArtist, artist_id)
     if not existing:
         session.add(GlobalIgnoredArtist(artist_id=artist_id, approved_by=admin.id))
+    # Clear reported flags for this artist across all users
+    for ia in session.exec(
+        select(IgnoredArtist).where(
+            IgnoredArtist.artist_id == artist_id, IgnoredArtist.reported.is_(True)
+        )
+    ):
+        ia.reported = False
+        session.add(ia)
     session.commit()
     return {"message": "approved"}
+
+
+@router.post("/admin/ignore/track/{track_id}/reject")
+async def admin_reject_track(
+    track_id: str,
+    session: Session = Depends(get_session),
+    admin: User | None = Depends(current_user),
+):
+    if not admin or not admin.is_admin:
+        raise HTTPException(status_code=403, detail="Admin required")
+    if not session.get(Track, track_id):
+        raise HTTPException(status_code=404, detail="Track not found")
+
+    # Clear reported flags for this track across all users (do not add to global ignores)
+    for it in session.exec(
+        select(IgnoredTrack).where(
+            IgnoredTrack.track_id == track_id, IgnoredTrack.reported.is_(True)
+        )
+    ):
+        it.reported = False
+        session.add(it)
+    session.commit()
+    return {"message": "rejected"}
+
+
+@router.post("/admin/ignore/artist/{artist_id}/reject")
+async def admin_reject_artist(
+    artist_id: str,
+    session: Session = Depends(get_session),
+    admin: User | None = Depends(current_user),
+):
+    if not admin or not admin.is_admin:
+        raise HTTPException(status_code=403, detail="Admin required")
+    if not session.get(Artist, artist_id):
+        raise HTTPException(status_code=404, detail="Artist not found")
+
+    # Clear reported flags for this artist across all users (do not add to global ignores)
+    for ia in session.exec(
+        select(IgnoredArtist).where(
+            IgnoredArtist.artist_id == artist_id, IgnoredArtist.reported.is_(True)
+        )
+    ):
+        ia.reported = False
+        session.add(ia)
+    session.commit()
+    return {"message": "rejected"}

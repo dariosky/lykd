@@ -167,3 +167,72 @@ export function UnignoreArtistButton({
     </button>
   );
 }
+
+// New: Report buttons
+export function ReportTrackButton({
+  trackId,
+  title = "Request global ignore",
+  className = "",
+}: {
+  trackId: string;
+  title?: string;
+  className?: string;
+}) {
+  const queryClient = useQueryClient();
+  const reportMutation = useMutation({
+    mutationFn: () => apiService.reportTrack(trackId),
+    onSuccess: () => {
+      // Refresh reports for admins if open
+      queryClient.invalidateQueries({ queryKey: queryKeys.reports });
+    },
+  });
+  return (
+    <button
+      className={`report-btn ${className}`}
+      onClick={(e) => {
+        e.stopPropagation();
+        reportMutation.mutate();
+      }}
+      disabled={reportMutation.isPending}
+      title={title}
+      aria-label={title}
+    >
+      {reportMutation.isPending ? "..." : "📣"}
+    </button>
+  );
+}
+
+export function ReportArtistButton({
+  artistId,
+  artistName,
+  title = "Request global ignore",
+  className = "",
+}: {
+  artistId: string;
+  artistName: string;
+  title?: string;
+  className?: string;
+}) {
+  const queryClient = useQueryClient();
+  const reportMutation = useMutation({
+    mutationFn: () => apiService.reportArtist(artistId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.reports });
+    },
+  });
+  const displayTitle = title ?? `Request to ignore ${artistName} globally`;
+  return (
+    <button
+      className={`report-btn ${className}`}
+      onClick={(e) => {
+        e.stopPropagation();
+        reportMutation.mutate();
+      }}
+      disabled={reportMutation.isPending}
+      title={displayTitle}
+      aria-label={displayTitle}
+    >
+      {reportMutation.isPending ? "..." : "📣"}
+    </button>
+  );
+}

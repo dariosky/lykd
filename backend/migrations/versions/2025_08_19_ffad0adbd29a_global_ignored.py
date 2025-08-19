@@ -61,10 +61,24 @@ def upgrade() -> None:
         )
 
     with op.batch_alter_table("ignored_artists", schema=None) as batch_op:
-        batch_op.add_column(sa.Column("reported", sa.Boolean(), nullable=False))
+        batch_op.add_column(
+            sa.Column(
+                "reported",
+                sa.Boolean(),
+                nullable=False,
+                server_default=sa.sql.expression.false(),
+            )
+        )
 
     with op.batch_alter_table("ignored_tracks", schema=None) as batch_op:
-        batch_op.add_column(sa.Column("reported", sa.Boolean(), nullable=False))
+        batch_op.add_column(
+            sa.Column(
+                "reported",
+                sa.Boolean(),
+                nullable=False,
+                server_default=sa.sql.expression.false(),
+            )
+        )
 
 
 def downgrade() -> None:
