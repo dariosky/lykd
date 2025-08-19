@@ -1,6 +1,7 @@
 import React from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { apiService, queryKeys, RecentItem } from "./api";
+import { IgnoreTrackButton } from "./IgnoreButtons";
 import "./Recent.css";
 
 export function useLocalStorageBoolean(key: string, initial: boolean) {
@@ -70,6 +71,12 @@ export function RecentPlayItem({ item }: { item: RecentItem }) {
           <span className="recent-time">{time}</span>
         </div>
       </div>
+      <div className="recent-actions">
+        <IgnoreTrackButton
+          trackId={item.track.id}
+          className="recent-ignore-btn"
+        />
+      </div>
     </li>
   );
 }
@@ -83,19 +90,26 @@ export function RecentActivityWidget({
   filterUser?: string | null;
   className?: string;
 }) {
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, status } =
-    useInfiniteQuery({
-      queryKey: [...queryKeys.recent(includeMe, filterUser ?? null)],
-      queryFn: ({ pageParam }) =>
-        apiService.getRecent({
-          limit: 20,
-          before: pageParam ?? null,
-          include_me: includeMe,
-          user: filterUser ?? null,
-        }),
-      initialPageParam: null as string | null,
-      getNextPageParam: (last) => last.next_before,
-    });
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    status,
+    error,
+  } = useInfiniteQuery({
+    queryKey: [...queryKeys.recent(includeMe, filterUser ?? null)],
+    queryFn: ({ pageParam }) =>
+      apiService.getRecent({
+        limit: 20,
+        before: pageParam ?? null,
+        include_me: includeMe,
+        user: filterUser ?? null,
+      }),
+    initialPageParam: null as string | null,
+    getNextPageParam: (last) => last.next_before,
+    retry: 0, // show errors immediately
+  });
 
   const loadMoreRef = React.useRef<HTMLDivElement | null>(null);
   React.useEffect(() => {
@@ -122,12 +136,19 @@ export function RecentActivityWidget({
     <div className={`recent-widget ${className ?? ""}`}>
       <ul className="recent-list">
         {status === "pending" && <div className="recent-loading">Loading…</div>}
-        {items.map((it) => (
-          <RecentPlayItem
-            key={`${it.user.id}-${it.track.id}-${it.played_at}`}
-            item={it}
-          />
-        ))}
+        {status === "error" && (
+          <div className="recent-error">
+            Failed to load recent activity:{" "}
+            {String((error as Error)?.message || "Server error")}
+          </div>
+        )}
+        {status === "success" &&
+          items.map((it) => (
+            <RecentPlayItem
+              key={`${it.user.id}-${it.track.id}-${it.played_at}`}
+              item={it}
+            />
+          ))}
       </ul>
       {hasNextPage && (
         <div ref={loadMoreRef} className="recent-load-more" aria-hidden>

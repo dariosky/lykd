@@ -12,7 +12,8 @@
     "format:check": "prettier --check .",
     "format:staged": "prettier --write .",
     "preview": "vite preview",
-    "test": "vitest",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage"
   },

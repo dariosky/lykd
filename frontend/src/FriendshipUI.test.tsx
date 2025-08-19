@@ -16,7 +16,13 @@ function renderWithProviders(ui: React.ReactNode, initialEntries: string[]) {
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={initialEntries}>
+      <MemoryRouter
+        initialEntries={initialEntries}
+        future={{
+          v7_relativeSplatPath: true,
+          v7_startTransition: true,
+        }}
+      >
         <Routes>
           <Route path="/user/:username" element={ui} />
           <Route
@@ -169,7 +175,12 @@ describe("Friendship UI", () => {
 
     render(
       <QueryClientProvider client={new QueryClient()}>
-        <MemoryRouter>
+        <MemoryRouter
+          future={{
+            v7_relativeSplatPath: true,
+            v7_startTransition: true,
+          }}
+        >
           <Layout>
             <div>Home</div>
           </Layout>

@@ -2,8 +2,8 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func, select, exists
-from sqlmodel import Session
+from sqlalchemy import func, exists
+from sqlmodel import Session, select
 
 from models.auth import User
 from models.music import (

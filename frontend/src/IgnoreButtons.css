@@ -1,0 +1,33 @@
+/* Shared styling for ignore buttons used across widgets and pages */
+button.ignore-btn {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.1s ease,
+    opacity 0.2s ease;
+  opacity: 0.85;
+}
+
+button.ignore-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.35);
+  opacity: 1;
+  transform: translateY(-1px);
+}
+
+button.ignore-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

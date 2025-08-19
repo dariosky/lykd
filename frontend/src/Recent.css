@@ -51,6 +51,31 @@
   min-width: 0;
 }
 
+.recent-item:hover .recent-actions {
+  opacity: 1;
+}
+
+/* On touch devices, always show actions for accessibility */
+@media (hover: none), (pointer: coarse) {
+  .recent-actions {
+    opacity: 1;
+  }
+}
+
+.recent-actions {
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.recent-ignore-btn {
+  opacity: 0.6;
+}
+
+.recent-ignore-btn:hover {
+  opacity: 1;
+}
+
 .recent-item:last-child {
   border-bottom: 0;
 }

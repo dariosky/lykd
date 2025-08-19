@@ -9,6 +9,7 @@ import {
   queryKeys,
   UserResponse,
 } from "./api";
+import { IgnoreTrackButton, IgnoreArtistButton } from "./IgnoreButtons";
 import "./PublicProfile.css";
 
 function formatDurationDHMS(totalSec: number): string {
@@ -51,8 +52,8 @@ export default function PublicProfilePage() {
     queryFn: () => apiService.getPublicProfile(username),
     enabled: !!username,
     staleTime: 30_000,
-    // Do not retry if it's a 404 (NotFoundError)
-    retry: (_failureCount, err) => !(err instanceof NotFoundError),
+    // Do not retry; surface 500s as errors immediately
+    retry: 0,
   });
 
   // Current viewer from query (shared with Layout, deduped)
@@ -301,6 +302,10 @@ export default function PublicProfilePage() {
                         </div>
                         <div className="list-meta">
                           ▶️ {formatNumber(t.play_count)} plays
+                          <IgnoreTrackButton
+                            trackId={t.track_id}
+                            className="profile-ignore-btn"
+                          />
                         </div>
                       </li>
                     ))}
@@ -323,6 +328,10 @@ export default function PublicProfilePage() {
                         </div>
                         <div className="list-meta">
                           ▶️ {formatNumber(t.play_count)} plays
+                          <IgnoreTrackButton
+                            trackId={t.track_id}
+                            className="profile-ignore-btn"
+                          />
                         </div>
                       </li>
                     ))}
@@ -341,6 +350,11 @@ export default function PublicProfilePage() {
                         </div>
                         <div className="list-meta">
                           ▶️ {formatNumber(a.play_count)} plays
+                          <IgnoreArtistButton
+                            artistId={a.artist_id}
+                            artistName={a.name}
+                            className="profile-ignore-btn"
+                          />
                         </div>
                       </li>
                     ))}

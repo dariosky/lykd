@@ -18,9 +18,9 @@ function App() {
   } = useQuery<ApiStatus, Error>({
     queryKey: queryKeys.backendStatus,
     queryFn: apiService.getBackendStatus,
-    staleTime: 5 * 1000, // 5 seconds
-    refetchInterval: 5 * 1000, // Refetch every 5 seconds
-    retry: 3,
+    staleTime: 60 * 1000, // 60 seconds
+    refetchInterval: 60 * 1000, // Refetch every 60 seconds
+    retry: 2,
   });
 
   // Current user query

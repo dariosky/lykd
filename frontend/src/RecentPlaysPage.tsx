@@ -46,6 +46,7 @@ export default function RecentPlaysPage() {
         }),
       initialPageParam: null as string | null,
       getNextPageParam: (last) => last.next_before,
+      retry: 0, // show errors immediately
     });
 
   const loadMoreRef = React.useRef<HTMLDivElement | null>(null);
@@ -156,38 +157,44 @@ export default function RecentPlaysPage() {
             {status === "pending" && (
               <div className="recent-loading">Loading…</div>
             )}
-            {items.map((it) => {
-              const pillName = it.user.name ?? it.user.username ?? "Unknown";
-              const avatar = it.user.picture ? (
-                <img
-                  className="pill-avatar"
-                  src={it.user.picture}
-                  alt={pillName}
-                />
-              ) : (
-                <div className="initials-avatar" aria-hidden>
-                  {(it.user.username || it.user.name || "?")
-                    ?.slice(0, 1)
-                    .toUpperCase()}
-                </div>
-              );
-              return (
-                <div
-                  key={`${it.user.id}-${it.track.id}-${it.played_at}`}
-                  className="recent-row"
-                >
-                  <button
-                    className="user-pill"
-                    onClick={() => onItemUserClick(it)}
-                    data-name={pillName}
+            {status === "error" && (
+              <div className="recent-error">
+                Failed to load recent activity.
+              </div>
+            )}
+            {status === "success" &&
+              items.map((it) => {
+                const pillName = it.user.name ?? it.user.username ?? "Unknown";
+                const avatar = it.user.picture ? (
+                  <img
+                    className="pill-avatar"
+                    src={it.user.picture}
+                    alt={pillName}
+                  />
+                ) : (
+                  <div className="initials-avatar" aria-hidden>
+                    {(it.user.username || it.user.name || "?")
+                      ?.slice(0, 1)
+                      .toUpperCase()}
+                  </div>
+                );
+                return (
+                  <div
+                    key={`${it.user.id}-${it.track.id}-${it.played_at}`}
+                    className="recent-row"
                   >
-                    {avatar}
-                    <span>{pillName}</span>
-                  </button>
-                  <RecentPlayItem item={it} />
-                </div>
-              );
-            })}
+                    <button
+                      className="user-pill"
+                      onClick={() => onItemUserClick(it)}
+                      data-name={pillName}
+                    >
+                      {avatar}
+                      <span>{pillName}</span>
+                    </button>
+                    <RecentPlayItem item={it} />
+                  </div>
+                );
+              })}
           </ul>
           {hasNextPage && (
             <div ref={loadMoreRef} className="recent-load-more" aria-hidden>

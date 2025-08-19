@@ -96,8 +96,11 @@
 }
 
 .list-meta {
-  color: #ddd;
-  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #bbb;
+  font-size: 0.85rem;
 }
 
 .list-empty {
@@ -196,6 +199,36 @@
   font-size: 1.2rem;
   font-weight: 700;
   color: #eee;
+}
+
+.profile-ignore-btn {
+  margin-left: 0.5rem;
+  opacity: 0.6;
+}
+
+/* Hide ignore buttons until hovering the list item on hover-capable devices */
+@media (hover: hover) and (pointer: fine) {
+  .list-item .profile-ignore-btn {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+  }
+  .list-item:hover .profile-ignore-btn {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+/* On touch devices (no hover), show ignore buttons by default */
+@media (hover: none), (pointer: coarse) {
+  .list-item .profile-ignore-btn {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+.profile-ignore-btn:hover {
+  opacity: 1;
 }
 
 @media (max-width: 800px) {
