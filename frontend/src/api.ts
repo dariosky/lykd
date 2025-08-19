@@ -98,10 +98,14 @@ export interface IgnoredTrackItem {
   title: string;
   album?: { id: string; name: string; picture: string | null } | null;
   artists: string[];
+  is_global: boolean;
+  reported: boolean;
 }
 export interface IgnoredArtistItem {
   artist_id: string;
   name: string;
+  is_global: boolean;
+  reported: boolean;
 }
 export interface IgnoredListResponse {
   tracks: IgnoredTrackItem[];

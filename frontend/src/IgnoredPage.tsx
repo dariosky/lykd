@@ -31,7 +31,14 @@ export default function IgnoredPage() {
           <h1>Ignored Items</h1>
           <p className="ignored-description">
             Manage tracks and artists you've chosen to ignore. These items won't
-            appear in your activity feeds.
+            appear in your activity feeds and stats you'll see.
+          </p>
+          <p>
+            There are tracks/artist we all aren't much interested into: once you
+            ignored them for yourself you can report them for global exclusion:
+            and admin will verify them and choose to accept it or not. These
+            normally are white-noise playlists, and "less artistic" ones (no
+            offense intended).
           </p>
         </div>
 
@@ -70,12 +77,14 @@ export default function IgnoredPage() {
                         <div className="ignored-subtitle">Artist</div>
                       </div>
                       <div className="ignored-actions">
-                        <ReportArtistButton
-                          artistId={artist.artist_id}
-                          artistName={artist.name}
-                          title="Request global ignore"
-                          className="mr-2"
-                        />
+                        {!artist.is_global && !artist.reported && (
+                          <ReportArtistButton
+                            artistId={artist.artist_id}
+                            artistName={artist.name}
+                            title="Request global ignore"
+                            className="mr-2"
+                          />
+                        )}
                         <UnignoreArtistButton
                           artistId={artist.artist_id}
                           artistName={artist.name}
@@ -118,11 +127,13 @@ export default function IgnoredPage() {
                         </div>
                       </div>
                       <div className="ignored-actions">
-                        <ReportTrackButton
-                          trackId={track.track_id}
-                          title="Request global ignore"
-                          className="mr-2"
-                        />
+                        {!track.is_global && !track.reported && (
+                          <ReportTrackButton
+                            trackId={track.track_id}
+                            title="Request global ignore"
+                            className="mr-2"
+                          />
+                        )}
                         <UnignoreTrackButton trackId={track.track_id} />
                       </div>
                     </li>

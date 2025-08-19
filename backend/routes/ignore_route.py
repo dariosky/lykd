@@ -26,7 +26,7 @@ async def list_ignored(
 ):
     artist_agg = func.string_agg(Artist.name, ",").label("artist_names")
 
-    # Fetch ignored tracks with aggregated artist names, ordered by timestamp desc
+    # Fetch ignored tracks with aggregated artist names and global+reported flags
     stmt_tracks = (
         select(
             Track.id,  # track_id
@@ -34,6 +34,8 @@ async def list_ignored(
             Album.id,  # album_id
             Album.name,  # album_name
             Album.picture,  # album_picture
+            func.max(GlobalIgnoredTrack.track_id).label("global_track_id"),
+            func.max(IgnoredTrack.reported).label("reported_flag"),
             artist_agg,
         )
         .select_from(IgnoredTrack)
@@ -41,6 +43,9 @@ async def list_ignored(
         .join(Album, Album.id == Track.album_id, isouter=True)
         .join(TrackArtist, TrackArtist.track_id == Track.id, isouter=True)
         .join(Artist, Artist.id == TrackArtist.artist_id, isouter=True)
+        .outerjoin(
+            GlobalIgnoredTrack, GlobalIgnoredTrack.track_id == IgnoredTrack.track_id
+        )
         .where(IgnoredTrack.user_id == user.id)
         .group_by(Track.id, Track.title, Album.id, Album.name, Album.picture)
         .order_by(IgnoredTrack.ts.desc())
@@ -54,11 +59,12 @@ async def list_ignored(
         album_id,
         album_name,
         album_picture,
+        global_track_id,
+        reported_flag,
         artist_names,
     ) in track_rows:
         artists_list = []
         if artist_names:
-            # Split on comma and strip whitespace for both SQLite and Postgres
             artists_list = [s.strip() for s in str(artist_names).split(",") if s]
         tracks_payload.append(
             {
@@ -70,20 +76,38 @@ async def list_ignored(
                     else None
                 ),
                 "artists": artists_list,
+                "is_global": global_track_id is not None,
+                "reported": bool(reported_flag),
             }
         )
 
-    # Efficiently fetch ignored artists with id and name only, ordered by timestamp desc
+    # Efficiently fetch ignored artists with id, name and global+reported flags
     stmt_artists = (
-        select(Artist.id, Artist.name)
+        select(
+            Artist.id,
+            Artist.name,
+            func.max(GlobalIgnoredArtist.artist_id).label("global_artist_id"),
+            func.max(IgnoredArtist.reported).label("reported_flag"),
+        )
         .select_from(IgnoredArtist)
         .join(Artist, Artist.id == IgnoredArtist.artist_id)
+        .outerjoin(
+            GlobalIgnoredArtist,
+            GlobalIgnoredArtist.artist_id == IgnoredArtist.artist_id,
+        )
         .where(IgnoredArtist.user_id == user.id)
+        .group_by(Artist.id, Artist.name)
         .order_by(IgnoredArtist.ts.desc())
     )
     artist_rows = session.exec(stmt_artists).all()
     artists_payload = [
-        {"artist_id": ar_id, "name": name} for (ar_id, name) in artist_rows
+        {
+            "artist_id": ar_id,
+            "name": name,
+            "is_global": global_id is not None,
+            "reported": bool(reported_flag),
+        }
+        for (ar_id, name, global_id, reported_flag) in artist_rows
     ]
 
     return {"tracks": tracks_payload, "artists": artists_payload}

@@ -150,6 +150,9 @@
 
 .ignored-actions {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .unignore-btn {
@@ -157,11 +160,12 @@
   color: white;
   border: none;
   border-radius: 6px;
-  width: 32px;
-  height: 32px;
-  display: flex;
+  padding: 0.35rem 0.6rem;
+  min-height: 32px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.35rem;
   cursor: pointer;
   font-size: 14px;
   transition: all 0.2s ease;
@@ -177,32 +181,38 @@
   cursor: not-allowed;
 }
 
-/* Ignore buttons for other components */
-.ignored-page .ignore-btn {
+/* Labeled report button */
+.report-btn {
   background: var(--danger-color, #ef4444);
   color: white;
   border: none;
-  border-radius: 4px;
-  width: 24px;
-  height: 24px;
-  display: flex;
+  border-radius: 6px;
+  padding: 0.35rem 0.6rem;
+  min-height: 32px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.35rem;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 14px;
   transition: all 0.2s ease;
-  opacity: 0.7;
+  opacity: 0.9;
 }
 
-.ignored-page .ignore-btn:hover:not(:disabled) {
+.report-btn:hover:not(:disabled) {
   opacity: 1;
   background: var(--danger-hover, #dc2626);
   transform: translateY(-1px);
 }
 
-.ignored-page .ignore-btn:disabled {
-  opacity: 0.4;
+.report-btn:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Small utility */
+.mr-2 {
+  margin-right: 0.5rem;
 }
 
 /* Responsive design */

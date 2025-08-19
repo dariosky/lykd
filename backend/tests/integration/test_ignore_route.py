@@ -96,7 +96,9 @@ def test_ignore_get_with_aggregation(client, test_session, test_user, auth_overr
 
     # Ignored artists list
     artists = {a["artist_id"]: a for a in data["artists"]}
-    assert artists == {"a2": {"artist_id": "a2", "name": "Artist B"}}
+    assert "a2" in artists
+    assert artists["a2"]["name"] == "Artist B"
+    assert artists["a2"].get("is_global") is False
 
 
 def test_ignore_track_crud(client, test_session, test_user, auth_override):

@@ -268,7 +268,7 @@ function Layout({ children }: LayoutProps) {
               </div>
 
               {/* Admin reports */}
-              {currentUser.is_admin && (
+              {currentUser.is_admin && totalReports > 0 && (
                 <div className="admin-dropdown-container">
                   <button
                     className="notif-button"

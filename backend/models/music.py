@@ -150,7 +150,7 @@ class IgnoredArtist(SQLModel, CamelModel, table=True):
     artist_id: str = Field(primary_key=True, foreign_key="artists.id")
     ts: datetime.datetime | None = Field(
         default=datetime.datetime.now(timezone.utc),
-        sa_column=Column(UtcAwareDateTime(), onupdate=func.now(), nullable=True),
+        sa_column=Column(UtcAwareDateTime(), nullable=True),
     )
     reported: bool = Field(default=False)
 
@@ -162,7 +162,7 @@ class GlobalIgnoredTrack(SQLModel, CamelModel, table=True):
     approved_by: str | None = Field(default=None, foreign_key="users.id")
     ts: datetime.datetime | None = Field(
         default=datetime.datetime.now(timezone.utc),
-        sa_column=Column(UtcAwareDateTime(), onupdate=func.now(), nullable=True),
+        sa_column=Column(UtcAwareDateTime(), nullable=True),
     )
 
     __table_args__ = (Index("idx_global_ignored_tracks_track", "track_id"),)

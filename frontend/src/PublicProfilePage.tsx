@@ -282,6 +282,18 @@ export default function PublicProfilePage() {
                     {formatDate(data.stats.tracking_since)}
                   </div>
                 </div>
+
+                <div className="stat-item">
+                  <div className="stat-left">
+                    <span className="stat-icon" aria-hidden>
+                      🪩
+                    </span>
+                    <span className="stat-label">Most played decade</span>
+                  </div>
+                  <div className="stat-value">
+                    {data.highlights.most_played_decade || "No data"}
+                  </div>
+                </div>
               </div>
             </section>
 
@@ -362,12 +374,6 @@ export default function PublicProfilePage() {
                       <li className="list-empty">No data</li>
                     )}
                   </ul>
-                </div>
-                <div className="highlight">
-                  <div className="highlight-title">🕰️ Most played decade</div>
-                  <div className="decade">
-                    {data.highlights.most_played_decade || "No data"}
-                  </div>
                 </div>
               </div>
             </section>

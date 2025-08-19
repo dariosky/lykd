@@ -96,7 +96,7 @@ interface UnignoreTrackButtonProps {
 
 export function UnignoreTrackButton({
   trackId,
-  title = "add back to the stats",
+  title = "Add back to stats",
   className = "",
 }: UnignoreTrackButtonProps) {
   const queryClient = useQueryClient();
@@ -121,7 +121,14 @@ export function UnignoreTrackButton({
       title={title}
       aria-label={title}
     >
-      {unignoreMutation.isPending ? "..." : "✓"}
+      {unignoreMutation.isPending ? (
+        "..."
+      ) : (
+        <>
+          <span className="btn-icon">✓</span>
+          <span className="btn-label">Unignore</span>
+        </>
+      )}
     </button>
   );
 }
@@ -136,7 +143,7 @@ interface UnignoreArtistButtonProps {
 export function UnignoreArtistButton({
   artistId,
   artistName,
-  title = "add back to the stats",
+  title = "Add back to stats",
   className = "",
 }: UnignoreArtistButtonProps) {
   const queryClient = useQueryClient();
@@ -163,7 +170,14 @@ export function UnignoreArtistButton({
       title={displayTitle}
       aria-label={displayTitle}
     >
-      {unignoreMutation.isPending ? "..." : "✓"}
+      {unignoreMutation.isPending ? (
+        "..."
+      ) : (
+        <>
+          <span className="btn-icon">✓</span>
+          <span className="btn-label">Unignore</span>
+        </>
+      )}
     </button>
   );
 }
@@ -182,8 +196,9 @@ export function ReportTrackButton({
   const reportMutation = useMutation({
     mutationFn: () => apiService.reportTrack(trackId),
     onSuccess: () => {
-      // Refresh reports for admins if open
+      // Refresh reports for admins if open and the ignored list to reflect reported state
       queryClient.invalidateQueries({ queryKey: queryKeys.reports });
+      queryClient.invalidateQueries({ queryKey: queryKeys.ignored });
     },
   });
   return (
@@ -197,7 +212,14 @@ export function ReportTrackButton({
       title={title}
       aria-label={title}
     >
-      {reportMutation.isPending ? "..." : "📣"}
+      {reportMutation.isPending ? (
+        "..."
+      ) : (
+        <>
+          <span className="btn-icon">📣</span>
+          <span className="btn-label">Report</span>
+        </>
+      )}
     </button>
   );
 }
@@ -218,6 +240,7 @@ export function ReportArtistButton({
     mutationFn: () => apiService.reportArtist(artistId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.reports });
+      queryClient.invalidateQueries({ queryKey: queryKeys.ignored });
     },
   });
   const displayTitle = title ?? `Request to ignore ${artistName} globally`;
@@ -232,7 +255,14 @@ export function ReportArtistButton({
       title={displayTitle}
       aria-label={displayTitle}
     >
-      {reportMutation.isPending ? "..." : "📣"}
+      {reportMutation.isPending ? (
+        "..."
+      ) : (
+        <>
+          <span className="btn-icon">📣</span>
+          <span className="btn-label">Report</span>
+        </>
+      )}
     </button>
   );
 }
