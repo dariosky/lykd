@@ -54,6 +54,7 @@ async def recent_activity(
     include_me: bool = True,
     user: Optional[str] = None,  # username or id to filter to a specific user
     q: Optional[str] = None,  # free-search
+    show_ignored: bool = Query(False, description="Include ignored tracks and artists"),
 ):
     before_dt = _parse_before(before)
     if before and not before_dt:
@@ -95,21 +96,22 @@ async def recent_activity(
                 qsel = qsel.where(Play.user_id == "__none__")
 
     # Exclude items ignored by current user (by track or by any artist)
-    ignore_track_clause = exists(
-        select(IgnoredTrack).where(
-            IgnoredTrack.user_id == current_user.id,
-            IgnoredTrack.track_id == Play.track_id,
+    if not show_ignored:
+        ignore_track_clause = exists(
+            select(IgnoredTrack).where(
+                IgnoredTrack.user_id == current_user.id,
+                IgnoredTrack.track_id == Play.track_id,
+            )
         )
-    )
-    ignore_artist_clause = exists(
-        select(IgnoredArtist)
-        .join(TrackArtist, TrackArtist.artist_id == IgnoredArtist.artist_id)
-        .where(
-            IgnoredArtist.user_id == current_user.id,
-            TrackArtist.track_id == Play.track_id,
+        ignore_artist_clause = exists(
+            select(IgnoredArtist)
+            .join(TrackArtist, TrackArtist.artist_id == IgnoredArtist.artist_id)
+            .where(
+                IgnoredArtist.user_id == current_user.id,
+                TrackArtist.track_id == Play.track_id,
+            )
         )
-    )
-    qsel = qsel.where(~ignore_track_clause, ~ignore_artist_clause)
+        qsel = qsel.where(~ignore_track_clause, ~ignore_artist_clause)
 
     # Free-text search across fields
     def _date_range_for_token(tok: str) -> Optional[tuple[datetime, datetime]]:
