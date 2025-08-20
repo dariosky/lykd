@@ -65,8 +65,17 @@ async def process_likes(
         ):
             return
         logger.info(f"Quick scan for {user} likes")
-        # TODO: look for new likes until we found one known
         new_spotify_likes = []
+        async for spotify_like in spotify.yield_from(
+            user=user,
+            request=spotify.get_liked_page,
+        ):
+            track_id = spotify_like.get("track", {}).get("id")
+            existing_like = db.get(Like, (user.id, track_id))
+            if existing_like:
+                break
+
+            new_spotify_likes.append(spotify_like)
 
         all_spotify_likes = new_spotify_likes
         tracks_to_remove = set()

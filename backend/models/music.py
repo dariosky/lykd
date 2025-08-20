@@ -93,7 +93,7 @@ class Like(SQLModel, CamelModel, table=True):
     user_id: str = Field(primary_key=True, foreign_key="users.id")
     track_id: str = Field(primary_key=True, foreign_key="tracks.id")
     date: datetime.datetime = Field(
-        default_factory=lambda: datetime.datetime.now(timezone.utc), primary_key=True
+        default_factory=lambda: datetime.datetime.now(timezone.utc)
     )
 
 
