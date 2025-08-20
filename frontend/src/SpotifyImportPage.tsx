@@ -4,6 +4,7 @@ import Layout from "./Layout";
 import { apiService, queryKeys, SpotifyStats } from "./api";
 import "./SpotifyImport.css";
 import { Link } from "react-router-dom";
+import { formatLocalDateLong, parseBackendDate } from "./date";
 
 function SpotifyImportPage() {
   const [file, setFile] = React.useState<File | null>(null);
@@ -75,14 +76,10 @@ function SpotifyImportPage() {
 
   const isBlocked = (waitSeconds ?? 0) > 0;
   const lastSyncDate = stats?.last_full_history_sync
-    ? new Date(stats.last_full_history_sync)
+    ? parseBackendDate(stats.last_full_history_sync)
     : null;
   const lastSyncHuman = lastSyncDate
-    ? lastSyncDate.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
+    ? formatLocalDateLong(stats!.last_full_history_sync, "en-US")
     : null;
 
   return (

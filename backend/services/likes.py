@@ -63,7 +63,6 @@ async def process_likes(
         if user.last_like_scan and user.last_like_scan > now - datetime.timedelta(
             minutes=15
         ):
-            logger.info(f"Skipping {user} likes")
             return
         logger.info(f"Quick scan for {user} likes")
         # TODO: look for new likes until we found one known

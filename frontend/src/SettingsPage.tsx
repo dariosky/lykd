@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { apiService, queryKeys, UserResponse, SpotifyStats } from "./api";
 import Layout from "./Layout";
 import "./SettingsPage.css";
+import { formatLocalDateLong } from "./date";
 
 function SettingsPage() {
   const queryClient = useQueryClient();
@@ -87,16 +88,6 @@ function SettingsPage() {
     } catch (_) {
       // ignore
     }
-  };
-
-  const formatTrackingSince = (dateString: string | null) => {
-    if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
   };
 
   // Spotify authorization mutation (for reconnect)
@@ -312,7 +303,10 @@ function SettingsPage() {
                       <span className="stat-label">Tracking since</span>
                     </div>
                     <div className="stat-value">
-                      {formatTrackingSince(spotifyStats.tracking_since)}
+                      {formatLocalDateLong(
+                        spotifyStats.tracking_since,
+                        "en-US",
+                      )}
                     </div>
                   </div>
                 </>

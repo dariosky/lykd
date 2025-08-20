@@ -11,6 +11,7 @@ import {
 } from "./api";
 import { IgnoreTrackButton, IgnoreArtistButton } from "./IgnoreButtons";
 import "./PublicProfile.css";
+import { formatLocalDate } from "./date";
 
 function formatDurationDHMS(totalSec: number): string {
   const days = Math.floor(totalSec / 86400);
@@ -21,17 +22,6 @@ function formatDurationDHMS(totalSec: number): string {
   if (hours > 0 || days > 0) parts.push(`${hours}h`);
   parts.push(`${minutes}m`);
   return parts.join(" ");
-}
-
-function formatDate(iso?: string | null): string {
-  if (!iso) return "-";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "-";
-  return d.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-  });
 }
 
 // Add a simple number formatter for thousand separators
@@ -279,7 +269,7 @@ export default function PublicProfilePage() {
                     <span className="stat-label">Tracking since</span>
                   </div>
                   <div className="stat-value">
-                    {formatDate(data.stats.tracking_since)}
+                    {formatLocalDate(data.stats.tracking_since)}
                   </div>
                 </div>
 

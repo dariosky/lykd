@@ -3,6 +3,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { apiService, queryKeys, RecentItem } from "./api";
 import { IgnoreTrackButton } from "./IgnoreButtons";
 import "./Recent.css";
+import { formatLocalDateTime } from "./date";
 
 export function useLocalStorageBoolean(key: string, initial: boolean) {
   const [value, setValue] = React.useState<boolean>(() => {
@@ -23,21 +24,7 @@ export function useLocalStorageBoolean(key: string, initial: boolean) {
 }
 
 export function RecentPlayItem({ item }: { item: RecentItem }) {
-  const playedAt = new Date(item.played_at);
-  const currentYear = new Date().getFullYear();
-  const opts: Intl.DateTimeFormatOptions = {
-    hour: "2-digit",
-    minute: "2-digit",
-    month: "short",
-    day: "2-digit",
-  };
-  if (playedAt.getFullYear() !== currentYear) {
-    opts.year = "numeric";
-  }
-  const time =
-    isNaN(playedAt.getTime()) || playedAt.getFullYear() === 0
-      ? ""
-      : playedAt.toLocaleString(undefined, opts);
+  const time = formatLocalDateTime(item.played_at);
   const albumPic = item.track.album?.picture ?? null;
   return (
     <li className="recent-item" data-testid="recent-item">
