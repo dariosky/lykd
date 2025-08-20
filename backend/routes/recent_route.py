@@ -1,5 +1,5 @@
 from datetime import datetime, timezone, timedelta
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.sql import and_, exists, or_
@@ -24,7 +24,7 @@ from routes.deps import current_user
 router = APIRouter()
 
 
-def _parse_before(before: Optional[str]) -> Optional[datetime]:
+def _parse_before(before: str | None) -> datetime | None:
     if not before:
         return None
     try:
@@ -52,10 +52,10 @@ async def recent_activity(
     session: Session = Depends(get_session),
     current_user: User | None = Depends(current_user),
     limit: int = Query(20, ge=1, le=100),
-    before: Optional[str] = None,
+    before: str | None = None,
     include_me: bool = True,
-    user: Optional[str] = None,  # username or id to filter to a specific user
-    q: Optional[str] = None,  # free-search
+    user: str | None = None,  # target username
+    q: str | None = None,  # free-search
     show_ignored: bool = Query(False, description="Include ignored tracks and artists"),
 ):
     before_dt = _parse_before(before)
@@ -67,11 +67,11 @@ async def recent_activity(
     allowed_ids = set(friends + [current_user.id])
 
     # Resolve user filter
-    filter_user_id: Optional[str] = None
+    filter_user_id: str | None = None
     if user:
         target = session.exec(select(User).where(User.username == user)).first()
         if not target:
-            target = session.get(User, user)
+            target = session.get(User, user)  # get by id
         if not target:
             raise HTTPException(status_code=404, detail="User not found")
         filter_user_id = target.id
@@ -131,7 +131,7 @@ async def recent_activity(
         )
 
     # Free-text search across fields
-    def _date_range_for_token(tok: str) -> Optional[tuple[datetime, datetime]]:
+    def _date_range_for_token(tok: str) -> tuple[datetime, datetime] | None:
         try:
             if len(tok) == 4 and tok.isdigit():
                 y = int(tok)
