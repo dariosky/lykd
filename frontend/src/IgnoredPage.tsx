@@ -30,15 +30,14 @@ export default function IgnoredPage() {
           </Link>
           <h1>Ignored Items</h1>
           <p className="ignored-description">
-            Manage tracks and artists you've chosen to ignore. These items won't
-            appear in your activity feeds and stats you'll see.
+            Manage the tracks and artists you choose to ignore. These items
+            won't appear in your activity feeds or affect your stats.
           </p>
           <p>
-            There are tracks/artist we all aren't much interested into: once you
-            ignored them for yourself you can report them for global exclusion:
-            and admin will verify them and choose to accept it or not. These
-            normally are white-noise playlists, and "less artistic" ones (no
-            offense intended).
+            If you believe an item should be hidden for everyone, you can
+            "report" it for global exclusion. An admin will review the request
+            and decide whether to approve it. This is typically used for
+            white-noise playlists or other non-musical content.
           </p>
         </div>
 

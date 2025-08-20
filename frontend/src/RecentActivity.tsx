@@ -23,7 +23,13 @@ export function useLocalStorageBoolean(key: string, initial: boolean) {
   return [value, setValue] as const;
 }
 
-export function RecentPlayItem({ item }: { item: RecentItem }) {
+export function RecentPlayItem({
+  item,
+  showIgnore = true,
+}: {
+  item: RecentItem;
+  showIgnore?: boolean;
+}) {
   const time = formatLocalDateTime(item.played_at);
   const albumPic = item.track.album?.picture ?? null;
   return (
@@ -59,10 +65,12 @@ export function RecentPlayItem({ item }: { item: RecentItem }) {
         </div>
       </div>
       <div className="recent-actions">
-        <IgnoreTrackButton
-          trackId={item.track.id}
-          className="recent-ignore-btn"
-        />
+        {showIgnore && (
+          <IgnoreTrackButton
+            trackId={item.track.id}
+            className="recent-ignore-btn"
+          />
+        )}
       </div>
     </li>
   );
@@ -134,6 +142,7 @@ export function RecentActivityWidget({
             <RecentPlayItem
               key={`${it.user.id}-${it.track.id}-${it.played_at}`}
               item={it}
+              showIgnore={false}
             />
           ))}
       </ul>
