@@ -151,7 +151,6 @@ class Spotify:
     @spotify_retry()
     def get_authorization_url(self) -> tuple[str, str]:
         """Generate authorization URL and state for OAuth flow"""
-        # TODO: save the state in memory?
         state = secrets.token_urlsafe(32)
 
         params = {

@@ -76,6 +76,11 @@ class TestSpotifyOAuthIntegration:
         """Test OAuth flow updates tokens for existing user."""
         original_token = test_user.tokens.get("access_token")
 
+        # Get a valid state first
+        auth_response = client.get("/spotify/authorize")
+        assert auth_response.status_code == 200
+        state = auth_response.json()["state"]
+
         new_token_data = {
             "access_token": "updated_access_token",
             "refresh_token": "updated_refresh_token",
@@ -105,7 +110,7 @@ class TestSpotifyOAuthIntegration:
         )
 
         callback_response = client.get(
-            "/spotify/callback?code=test_code&state=test_state", follow_redirects=False
+            f"/spotify/callback?code=test_code&state={state}", follow_redirects=False
         )
         assert callback_response.status_code == 302
 
@@ -173,6 +178,11 @@ class TestDatabaseIntegration:
         # Count users before
         initial_count = test_session.query(User).count()
 
+        # Get a valid state first
+        auth_response = client.get("/spotify/authorize")
+        assert auth_response.status_code == 200
+        state = auth_response.json()["state"]
+
         # Mock failed token exchange
         httpx_mock.add_response(
             method="POST",
@@ -182,7 +192,7 @@ class TestDatabaseIntegration:
         )
 
         response = client.get(
-            "/spotify/callback?code=test_code&state=test_state", follow_redirects=False
+            f"/spotify/callback?code=test_code&state={state}", follow_redirects=False
         )
         assert response.status_code == 302
         assert "error" in response.headers["location"]
@@ -197,6 +207,11 @@ class TestErrorHandling:
 
     def test_spotify_api_error_handling(self, client, httpx_mock):
         """Test handling of Spotify API errors."""
+        # Get a valid state first
+        auth_response = client.get("/spotify/authorize")
+        assert auth_response.status_code == 200
+        state = auth_response.json()["state"]
+
         httpx_mock.add_response(
             method="POST",
             url="https://accounts.spotify.com/api/token",
@@ -205,7 +220,7 @@ class TestErrorHandling:
         )
 
         response = client.get(
-            "/spotify/callback?code=invalid_code&state=test_state",
+            f"/spotify/callback?code=invalid_code&state={state}",
             follow_redirects=False,
         )
         assert response.status_code == 302

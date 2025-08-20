@@ -63,6 +63,11 @@ class TestAppEndpoints:
 
     async def test_spotify_callback_success(self, client, test_session, httpx_mock):
         """Test successful Spotify OAuth callback."""
+        # Get a valid state first
+        auth_resp = client.get("/spotify/authorize")
+        assert auth_resp.status_code == 200
+        auth_state = auth_resp.json()["state"]
+
         # Mock Spotify API responses
         httpx_mock.add_response(
             method="POST",
@@ -89,7 +94,8 @@ class TestAppEndpoints:
         )
 
         response = client.get(
-            "/spotify/callback?code=test_code&state=test_state", follow_redirects=False
+            f"/spotify/callback?code=test_code&state={auth_state}",
+            follow_redirects=False,
         )
 
         assert response.status_code == 302  # Redirect
@@ -114,6 +120,11 @@ class TestAppEndpoints:
         self, client, test_user, test_session, httpx_mock
     ):
         """Test Spotify callback for existing user updates tokens."""
+        # Get a valid state first
+        auth_resp = client.get("/spotify/authorize")
+        assert auth_resp.status_code == 200
+        auth_state = auth_resp.json()["state"]
+
         new_token_data = {
             "access_token": "new_access_token",
             "refresh_token": "new_refresh_token",
@@ -141,7 +152,8 @@ class TestAppEndpoints:
         )
 
         response = client.get(
-            "/spotify/callback?code=test_code&state=test_state", follow_redirects=False
+            f"/spotify/callback?code=test_code&state={auth_state}",
+            follow_redirects=False,
         )
 
         assert response.status_code == 302
@@ -153,6 +165,11 @@ class TestAppEndpoints:
 
     async def test_spotify_callback_exception_handling(self, client, httpx_mock):
         """Test Spotify callback handles exceptions gracefully."""
+        # Get a valid state first
+        auth_resp = client.get("/spotify/authorize")
+        assert auth_resp.status_code == 200
+        auth_state = auth_resp.json()["state"]
+
         # Mock failed token exchange
         httpx_mock.add_response(
             method="POST",
@@ -162,7 +179,8 @@ class TestAppEndpoints:
         )
 
         response = client.get(
-            "/spotify/callback?code=test_code&state=test_state", follow_redirects=False
+            f"/spotify/callback?code=test_code&state={auth_state}",
+            follow_redirects=False,
         )
 
         assert response.status_code == 302

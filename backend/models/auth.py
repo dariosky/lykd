@@ -97,3 +97,52 @@ def populate_username(db_session: Session, user: User) -> str:
     db_session.add(user)
 
     return candidate
+
+
+class OAuthState(SQLModel, CamelModel, table=True):
+    """Single-use OAuth state to prevent CSRF and enable auditing.
+
+    We store a hash of the state (not the raw token), timing info, and
+    client metadata to detect/restrict misbehaving clients.
+    """
+
+    __tablename__ = "oauth_states"
+
+    id: int | None = Field(default=None, primary_key=True)
+    provider: str = Field(default="spotify", index=True)
+
+    # Store a hash of the state for security; keep it unique for single-use
+    state_hash: str = Field(index=True, unique=True)
+
+    # Optional PKCE code_verifier storage (if used)
+    code_verifier: str | None = Field(default=None)
+
+    # Timestamps
+    created_at: datetime.datetime = Field(
+        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc),
+        sa_column=Column(UtcAwareDateTime(), nullable=False),
+    )
+    expires_at: datetime.datetime = Field(
+        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc)
+        + datetime.timedelta(minutes=10),
+        sa_column=Column(UtcAwareDateTime(), nullable=False),
+    )
+    consumed_at: datetime.datetime | None = Field(
+        default=None,
+        sa_column=Column(UtcAwareDateTime(), nullable=True),
+    )
+
+    # Client tracking to spot misbehaving clients
+    request_ip: str | None = Field(default=None)
+    request_user_agent: str | None = Field(default=None)
+    request_referer: str | None = Field(default=None)
+    consumed_by_ip: str | None = Field(default=None)
+
+    # Optional metadata to help debugging flows
+    redirect_uri: str | None = Field(default=None)
+    next_url: str | None = Field(default=None)
+
+    attempt_count: int = Field(default=0)
+
+    # The user that completed the handshake (set on successful callback)
+    user_id: str | None = Field(default=None, foreign_key="users.id", index=True)

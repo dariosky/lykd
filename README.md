@@ -121,7 +121,7 @@ LYKD expands on this concept by creating a full web application that makes your 
 - [x] Allow to import full streaming history from [Spotify privacy page](https://www.spotify.com/ca-en/account/privacy/)
 - [x] Friend requests and acceptance flow
 - [x] Do a quick sync of likes often - and a full sync (for deletions) every 12h
-- [ ] Add an ignore and report button (to ignore and propose a global ignore)
+- [x] Add an ignore and report button (to ignore and propose a global ignore)
 - [ ] Add suggestions (including songs listened recently)
 - [ ] Add a web player
 - [ ] Add a "like" button
