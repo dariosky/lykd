@@ -4,6 +4,7 @@ import { apiService, queryKeys, RecentItem } from "./api";
 import { IgnoreTrackButton } from "./IgnoreButtons";
 import "./Recent.css";
 import { formatLocalDateTime } from "./date";
+import { Link } from "react-router-dom";
 
 export function useLocalStorageBoolean(key: string, initial: boolean) {
   const [value, setValue] = React.useState<boolean>(() => {
@@ -32,6 +33,8 @@ export function RecentPlayItem({
 }) {
   const time = formatLocalDateTime(item.date);
   const albumPic = item.track.album?.picture ?? null;
+  const userIdent = item.user.username || item.user.id;
+  const userDisplay = item.user.name ?? item.user.username ?? "Unknown";
   return (
     <li className="recent-item" data-testid="recent-item">
       <div className="recent-left">
@@ -59,7 +62,12 @@ export function RecentPlayItem({
           )}
         </div>
         <div className="recent-meta">
-          <span className="recent-user">{item.user.name ?? "Unknown"}</span>
+          <Link
+            to={`/recent?user=${encodeURIComponent(userIdent)}`}
+            className="recent-user link"
+          >
+            {userDisplay}
+          </Link>
           <span className="recent-dot">•</span>
           <span className="recent-time">{time}</span>
         </div>

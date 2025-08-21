@@ -34,8 +34,7 @@
 
 .dashboard-header {
   max-width: 1200px;
-  margin: 0 auto;
-  margin-bottom: 3rem;
+  margin: 0 auto 2rem;
 }
 
 .welcome-message h1 {

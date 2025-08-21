@@ -50,7 +50,7 @@ function Dashboard() {
                   navigate(`/recent?user=${encodeURIComponent(myIdent)}`)
                 }
               >
-                Recent Activity
+                Your Recent Activity
               </h2>
               <svg
                 width="24"

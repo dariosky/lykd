@@ -4,7 +4,7 @@
 }
 
 .recent-widget.compact {
-  max-height: 360px;
+  max-height: 500px;
   overflow: auto;
   padding-right: 4px;
 }
@@ -306,6 +306,7 @@
 
 /* Dashboard header link */
 .link {
+  color: #ff6b6b;
   cursor: pointer;
   text-decoration: underline transparent;
   transition: text-decoration-color 0.15s ease;
