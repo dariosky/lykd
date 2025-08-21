@@ -24,6 +24,7 @@ class User(SQLModel, CamelModel, table=True):
         sa_column=Column(UtcAwareDateTime(), nullable=False),
     )
     is_admin: bool = False
+    subscribed: bool = False
 
     last_like_scan_full: datetime.datetime | None = Field(
         default=None,

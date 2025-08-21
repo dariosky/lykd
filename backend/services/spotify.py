@@ -132,6 +132,7 @@ class Spotify:
             "playlist-modify-private",
             "user-read-recently-played",
             "user-top-read",
+            "user-read-private",  # to check if user is premium
         ]
 
         if not self.client_id or not self.client_secret:

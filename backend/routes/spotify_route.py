@@ -122,6 +122,7 @@ async def spotify_callback(
             existing_user.picture = (
                 user_info["images"][0]["url"] if user_info.get("images") else ""
             )
+            existing_user.subscribed = user_info["product"] == "premium"
             # If username not set (legacy), assign one now
             if not existing_user.username:
                 populate_username(session, existing_user)
