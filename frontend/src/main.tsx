@@ -15,6 +15,7 @@ import PublicProfilePage from "./PublicProfilePage";
 import SpotifyImportPage from "./SpotifyImportPage";
 import RecentPlaysPage from "./RecentPlaysPage";
 import IgnoredPage from "./IgnoredPage";
+import LikesPage from "./LikesPage";
 import "./index.css";
 import "./common.css";
 
@@ -48,6 +49,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/spotify/import" element={<SpotifyImportPage />} />
           <Route path="/recent" element={<RecentPlaysPage />} />
+          <Route path="/likes" element={<LikesPage />} />
           <Route path="/ignored" element={<IgnoredPage />} />
           <Route
             path="/services"

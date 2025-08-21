@@ -4,7 +4,7 @@
 }
 
 .recent-widget.compact {
-  max-height: 500px;
+  max-height: calc(100vh - 270px);
   overflow: auto;
   padding-right: 4px;
 }
@@ -182,62 +182,94 @@
   gap: 0.5rem;
   font-size: 0.9rem;
   color: #fff;
+  cursor: pointer; /* label clickable */
+}
+.recent-menu-item input,
+.recent-menu-item span {
+  cursor: pointer; /* pointer on checkbox and text when enabled */
 }
 
-/* Recent page */
+/* Disabled state styling for exclude toggles */
+.recent-menu-item input:disabled {
+  cursor: not-allowed;
+}
+.recent-menu-item input:disabled + span {
+  color: #9aa;
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Recent and Likes page containers */
 .recent-page {
   min-height: 100vh;
   background: #0a0a0a;
   color: #fff;
   padding: 2rem;
 }
+.likes-page {
+  min-height: 100vh;
+  background: #0a0a0a;
+  color: #fff;
+  padding: 2rem;
+}
 
-.recent-page-header {
+/* Page header */
+.recent-page .page-header,
+.likes-page .page-header {
   max-width: 1100px;
   margin: 0 auto 1rem;
 }
 
-.recent-page-title-row {
+/* Title row */
+.recent-page .title-row,
+.likes-page .title-row {
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
-.recent-page-title {
+/* Page title */
+.recent-page .page-title,
+.likes-page .page-title {
   margin: 0.25rem 0 0.5rem;
 }
 
-.recent-page-actions {
+/* Header actions block */
+.recent-page .actions,
+.likes-page .actions {
   margin-left: auto;
 }
 
-.recent-filters {
+/* Filters row */
+.recent-page .filters,
+.likes-page .filters {
   margin-top: 0.25rem;
 }
 
-.filter-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
+/* Search block */
+.recent-page .search,
+.likes-page .search {
+  margin-top: 0.5rem;
+}
+
+.recent-page .search-input,
+.likes-page .search-input {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
   background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 999px;
-  padding: 0.2rem 0.6rem;
-  font-size: 0.85rem;
-}
-
-.filter-chip.muted {
-  opacity: 0.7;
-}
-
-.chip-clear {
-  background: transparent;
-  border: none;
   color: #fff;
-  cursor: pointer;
 }
 
-.recent-page-content {
+.recent-page .search-input::placeholder,
+.likes-page .search-input::placeholder {
+  color: #aaa;
+}
+
+/* Page content area */
+.recent-page .page-content,
+.likes-page .page-content {
   max-width: 1100px;
   margin: 0 auto;
 }
@@ -327,21 +359,4 @@
   color: #fff;
   font-size: 0.8rem;
   font-weight: 700;
-}
-
-.recent-search {
-  margin-top: 0.5rem;
-}
-
-.recent-search-input {
-  width: 100%;
-  padding: 0.5rem 0.6rem;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(255, 255, 255, 0.06);
-  color: #fff;
-}
-
-.recent-search-input::placeholder {
-  color: #aaa;
 }

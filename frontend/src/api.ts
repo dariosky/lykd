@@ -476,6 +476,30 @@ export const apiService = {
     return response.json();
   },
 
+  // Likes activity (same shape as recent)
+  getLikes: async (params: {
+    limit?: number;
+    before?: string | null;
+    include_me?: boolean;
+    user?: string | null;
+    q?: string | null;
+  }): Promise<RecentResponse> => {
+    const qs = new URLSearchParams();
+    if (params.limit) qs.set("limit", String(params.limit));
+    if (params.before) qs.set("before", params.before);
+    if (params.include_me === false) qs.set("include_me", "false");
+    if (params.user) qs.set("user", params.user);
+    if (params.q) qs.set("q", params.q);
+    const response = await fetch(`/api/likes?${qs.toString()}`, {
+      credentials: "include",
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Failed to get likes: ${response.status} ${text}`);
+    }
+    return response.json();
+  },
+
   // Get Spotify stats for current user
   getSpotifyStats: async (): Promise<SpotifyStats> => {
     const response = await fetch("/api/spotify/stats", {
@@ -516,6 +540,13 @@ export const queryKeys = {
   recent: (includeMe: boolean, user?: string | null, q?: string | null) =>
     [
       "recent",
+      includeMe ? "me+friends" : "friends",
+      user ?? null,
+      q ?? null,
+    ] as const,
+  likes: (includeMe: boolean, user?: string | null, q?: string | null) =>
+    [
+      "likes",
       includeMe ? "me+friends" : "friends",
       user ?? null,
       q ?? null,

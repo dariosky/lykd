@@ -27,9 +27,11 @@ export function useLocalStorageBoolean(key: string, initial: boolean) {
 export function RecentPlayItem({
   item,
   showIgnore = true,
+  userLinkBase = "/recent",
 }: {
   item: RecentItem;
   showIgnore?: boolean;
+  userLinkBase?: string;
 }) {
   const time = formatLocalDateTime(item.date);
   const albumPic = item.track.album?.picture ?? null;
@@ -63,7 +65,7 @@ export function RecentPlayItem({
         </div>
         <div className="recent-meta">
           <Link
-            to={`/recent?user=${encodeURIComponent(userIdent)}`}
+            to={`${userLinkBase}?user=${encodeURIComponent(userIdent)}`}
             className="recent-user link"
           >
             {userDisplay}
@@ -151,6 +153,7 @@ export function RecentActivityWidget({
               key={`${it.user.id}-${it.track.id}-${it.date}`}
               item={it}
               showIgnore={false}
+              userLinkBase="/recent"
             />
           ))}
       </ul>

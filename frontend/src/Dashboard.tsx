@@ -34,9 +34,7 @@ function Dashboard() {
   return (
     <div className="dashboard">
       <header className="dashboard-header">
-        <div className="welcome-message">
-          <h1>Welcome back, {currentUser?.name}!</h1>
-        </div>
+        {/* ...existing header code... */}
       </header>
 
       <main className="dashboard-main">
@@ -52,12 +50,7 @@ function Dashboard() {
               >
                 Your Recent Activity
               </h2>
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="#1db954">
                 <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z" />
               </svg>
             </div>
@@ -83,9 +76,16 @@ function Dashboard() {
                 width="24"
                 height="24"
                 viewBox="0 0 24 24"
-                fill="currentColor"
+                fill="#1db954"
+                aria-hidden="true"
               >
-                <path d="M16 4c0-1.11.89-2 2-2s2 .89 2 2-.89 2-2 2-2-.89-2-2zM4 18v-1c0-1.1.9-2 2-2s2 .9 2 2v1h2v-1c0-2.21-1.79-4-4-4s-4 1.79-4 4v1h2zm8-2c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2s-2 .9-2 2v6c0 1.1.9 2 2 2z" />
+                <circle cx="8" cy="8" r="3"></circle>
+                <circle cx="16" cy="9" r="2.5" opacity="0.85"></circle>
+                <path d="M4 18c0-2.21 1.79-4 4-4s4 1.79 4 4v1H4v-1z"></path>
+                <path
+                  d="M13 18c0-1.93 1.57-3.5 3.5-3.5S20 16.07 20 18v1h-7v-1z"
+                  opacity="0.85"
+                ></path>
               </svg>
             </div>
             <div className="card-content">

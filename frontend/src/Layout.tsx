@@ -1,6 +1,6 @@
 import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   apiService,
   queryKeys,
@@ -16,6 +16,7 @@ interface LayoutProps {
 
 function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
   const [isNotifOpen, setIsNotifOpen] = React.useState(false);
@@ -183,12 +184,41 @@ function Layout({ children }: LayoutProps) {
               <img src="/logo_dark.svg" alt="LYKD" className="logo" />
               LYKD
             </div>
+
+            {/* Center tabs */}
+            <div className="header-center">
+              <nav className="main-tabs" aria-label="Primary">
+                {(() => {
+                  const isLikes = location.pathname.startsWith("/likes");
+                  const isRecent =
+                    location.pathname === "/" ||
+                    location.pathname.startsWith("/recent");
+                  return (
+                    <>
+                      <button
+                        className={`main-tab recent ${isRecent ? "active" : ""}`}
+                        onClick={() => navigate("/")}
+                      >
+                        Recent
+                      </button>
+                      <button
+                        className={`main-tab likes ${isLikes ? "active" : ""}`}
+                        onClick={() => navigate("/likes")}
+                      >
+                        Likes
+                      </button>
+                    </>
+                  );
+                })()}
+              </nav>
+            </div>
+
             <div className="header-actions">
               {currentUser.username && (
                 <button
                   className="public-profile-button"
                   onClick={handlePublicProfileClick}
-                  title="Go to the public profile"
+                  title="Your public profile stats"
                 >
                   🌎
                 </button>

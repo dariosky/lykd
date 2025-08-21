@@ -7,7 +7,7 @@
 .user-header {
   background: rgba(0, 0, 0, 0.3);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 1rem;
+  padding: 1rem 1rem 0; /* remove bottom padding so tabs sit at bottom */
   position: sticky;
   top: 0;
   z-index: 1000;
@@ -17,9 +17,83 @@
 .user-header-content {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-end; /* align items to bottom of header */
   max-width: 1200px;
   margin: 0 auto;
+}
+
+/* Center slot for tabs */
+.header-center {
+  flex: 1 1 auto;
+  display: flex;
+  justify-content: center;
+}
+
+/* Primary tabs under header */
+.main-tabs {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-end;
+}
+
+.main-tab {
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.85);
+  padding: 0.6rem 0.25rem; /* tighter to emphasize underline */
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.98rem;
+  min-width: 90px;
+  transition: color 0.2s ease;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center; /* center text horizontally */
+  line-height: 1.1;
+}
+
+.main-tab:hover {
+  color: #fff;
+}
+
+/* underline indicator - overlaps the header bottom border by 1px */
+.main-tab::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  height: 3px;
+  bottom: -1px;
+  background: transparent;
+  border-radius: 3px 3px 0 0;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition:
+    transform 0.2s ease,
+    background-color 0.2s ease;
+}
+
+/* subtle preview on hover */
+.main-tab:hover::after {
+  background: rgba(255, 255, 255, 0.25);
+  transform: scaleX(1);
+}
+
+/* Active accents */
+.main-tab.active {
+  color: #fff;
+}
+
+.main-tab.active.recent::after {
+  background: #1db954; /* green */
+  transform: scaleX(1);
+}
+
+.main-tab.active.likes::after {
+  background: #dc2626; /* red */
+  transform: scaleX(1);
 }
 
 .header-logo {
@@ -31,6 +105,7 @@
   font-weight: 600;
   cursor: pointer;
   transition: opacity 0.2s ease;
+  margin-right: 50px;
 }
 
 .header-logo:hover {

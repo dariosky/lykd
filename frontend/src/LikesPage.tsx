@@ -6,16 +6,14 @@ import { RecentPlayItem } from "./RecentActivity";
 import { Link, useSearchParams } from "react-router-dom";
 import "./Recent.css";
 
-export default function RecentPlaysPage() {
+export default function LikesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const userParam = searchParams.get("user");
   const excludeParam = searchParams.get("exclude_me") === "true";
   const qParam = searchParams.get("q") ?? "";
 
-  // Local debounced search text state
   const [searchText, setSearchText] = React.useState(qParam);
   React.useEffect(() => {
-    // Keep local state in sync if URL changes externally
     if (qParam !== searchText) setSearchText(qParam);
   }, [qParam]);
 
@@ -25,9 +23,9 @@ export default function RecentPlaysPage() {
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, status } =
     useInfiniteQuery({
-      queryKey: queryKeys.recent(includeMe, filterUser, qParam || null),
+      queryKey: queryKeys.likes(includeMe, filterUser, qParam || null),
       queryFn: ({ pageParam }) =>
-        apiService.getRecent({
+        apiService.getLikes({
           limit: 30,
           before: pageParam ?? null,
           include_me: includeMe,
@@ -36,7 +34,7 @@ export default function RecentPlaysPage() {
         }),
       initialPageParam: null as string | null,
       getNextPageParam: (last) => last.next_before,
-      retry: 0, // show errors immediately
+      retry: 0,
     });
 
   const loadMoreRef = React.useRef<HTMLDivElement | null>(null);
@@ -59,7 +57,6 @@ export default function RecentPlaysPage() {
 
   const items = data?.pages.flatMap((p) => p.items) ?? [];
 
-  // Debounced URL update for search
   React.useEffect(() => {
     const handle = window.setTimeout(() => {
       if (searchText !== qParam) {
@@ -96,13 +93,13 @@ export default function RecentPlaysPage() {
 
   return (
     <Layout>
-      <div className="recent-page">
+      <div className="likes-page">
         <div className="page-header">
           <Link to="/" className="back-link">
             ← Back to Home
           </Link>
           <div className="title-row">
-            <h1 className="page-title">Recent Activity</h1>
+            <h1 className="page-title">Likes</h1>
             <div className="actions">
               <label className="recent-menu-item">
                 <input
@@ -111,7 +108,7 @@ export default function RecentPlaysPage() {
                   onChange={(e) => toggleExclude(e.target.checked)}
                   disabled={!!filterUser}
                 />
-                <span>Exclude my activity</span>
+                <span>Exclude my likes</span>
               </label>
             </div>
           </div>
@@ -144,9 +141,7 @@ export default function RecentPlaysPage() {
               <div className="recent-loading">Loading…</div>
             )}
             {status === "error" && (
-              <div className="recent-error">
-                Failed to load recent activity.
-              </div>
+              <div className="recent-error">Failed to load likes.</div>
             )}
             {status === "success" &&
               items.map((it) => {
@@ -177,7 +172,7 @@ export default function RecentPlaysPage() {
                       {avatar}
                       <span>{pillName}</span>
                     </button>
-                    <RecentPlayItem item={it} userLinkBase="/recent" />
+                    <RecentPlayItem item={it} userLinkBase="/likes" />
                   </div>
                 );
               })}
@@ -188,7 +183,7 @@ export default function RecentPlaysPage() {
             </div>
           )}
           {items.length === 0 && status === "success" && (
-            <div className="recent-empty large">No recent activity.</div>
+            <div className="recent-empty large">No likes yet.</div>
           )}
         </div>
       </div>

@@ -231,7 +231,7 @@ def get_page(
                     "artists": track_artists.get(p.track_id, []),
                 },
                 field: getattr(p, field).isoformat(),
-                "context_uri": p.context_uri,
+                "context_uri": getattr(p, "context_uri", None),
             }
         )
 
@@ -253,6 +253,31 @@ async def recent_activity(
     # Base query
     return get_page(
         Model=Play,
+        session=session,
+        current_user=current_user,
+        limit=limit,
+        before=before,
+        include_me=include_me,
+        user=user,
+        q=q,
+        show_ignored=show_ignored,
+    )
+
+
+@router.get("/likes")
+async def user_likes(
+    session: Session = Depends(get_session),
+    current_user: User | None = Depends(current_user),
+    limit: int = Query(20, ge=1, le=100),
+    before: str | None = None,
+    include_me: bool = True,
+    user: str | None = None,  # target username
+    q: str | None = None,  # free-search
+    show_ignored: bool = Query(False, description="Include ignored tracks and artists"),
+):
+    # Base query
+    return get_page(
+        Model=Like,
         session=session,
         current_user=current_user,
         limit=limit,
