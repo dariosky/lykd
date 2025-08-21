@@ -164,12 +164,12 @@ def test_recent_search_by_date_tokens(
     r = client.get("/recent?limit=10&q=2013")
     assert r.status_code == 200
     items = r.json()["items"]
-    assert all(it["played_at"].startswith("2013-") for it in items)
+    assert all(it["date"].startswith("2013-") for it in items)
 
     # Year-month should include only 2013-08
     r = client.get("/recent?limit=10&q=2013-08")
     assert r.status_code == 200
     items = r.json()["items"]
-    assert all(it["played_at"].startswith("2013-08") for it in items)
+    assert all(it["date"].startswith("2013-08") for it in items)
 
     del test_app.dependency_overrides[get_current_user]

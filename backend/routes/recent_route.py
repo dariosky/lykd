@@ -1,5 +1,4 @@
-from datetime import datetime, timezone, timedelta
-from typing import Any
+from typing import Any, Sequence
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.sql import and_, exists, or_
@@ -7,7 +6,6 @@ from sqlmodel import Session, select
 
 from models.auth import User
 from models.common import get_session
-from models.friendship import Friendship, FriendshipStatus
 from models.music import (
     Album,
     Artist,
@@ -18,53 +16,37 @@ from models.music import (
     Play,
     Track,
     TrackArtist,
+    Like,
 )
-from routes.deps import current_user
+from routes.deps import current_user, parse_ui_date, date_range_for_token
+from routes.friendship import get_friends
 
 router = APIRouter()
 
 
-def _parse_before(before: str | None) -> datetime | None:
-    if not before:
-        return None
-    try:
-        # Expect ISO 8601 string
-        return datetime.fromisoformat(before.replace("Z", "+00:00"))
-    except Exception:
-        return None
-
-
-def _friends_ids(session: Session, me_id: str) -> list[str]:
-    rows = session.exec(
-        select(Friendship).where(Friendship.status == FriendshipStatus.accepted)
-    ).all()
-    out: list[str] = []
-    for fr in rows:
-        if me_id == fr.user_low_id:
-            out.append(fr.user_high_id)
-        elif me_id == fr.user_high_id:
-            out.append(fr.user_low_id)
-    return out
-
-
-@router.get("/recent")
-async def recent_activity(
-    session: Session = Depends(get_session),
-    current_user: User | None = Depends(current_user),
+def get_page(
+    Model: type[Play] | type[Like],
+    session: Session,
+    current_user: User | None,
+    field: str = "date",
     limit: int = Query(20, ge=1, le=100),
     before: str | None = None,
     include_me: bool = True,
     user: str | None = None,  # target username
     q: str | None = None,  # free-search
-    show_ignored: bool = Query(False, description="Include ignored tracks and artists"),
+    show_ignored: bool = False,
 ):
-    before_dt = _parse_before(before)
+    sort_field = getattr(Model, field)
+    query = select(Model).order_by(sort_field.desc())
+
+    before_dt = parse_ui_date(before)
     if before and not before_dt:
         raise HTTPException(status_code=400, detail="Invalid 'before' parameter")
 
     # Determine allowed user ids (me + friends)
-    friends = _friends_ids(session, current_user.id)
-    allowed_ids = set(friends + [current_user.id])
+    friends = get_friends(session, current_user)
+    friends_ids = {friend.id for friend in friends}
+    allowed_ids = friends_ids | {current_user.id}
 
     # Resolve user filter
     filter_user_id: str | None = None
@@ -78,41 +60,39 @@ async def recent_activity(
         if filter_user_id not in allowed_ids:
             raise HTTPException(status_code=403, detail="Forbidden user filter")
 
-    # Base query
-    qsel = select(Play).order_by(Play.date.desc())
     if before_dt:
-        qsel = qsel.where(Play.date < before_dt)
+        query = query.where(sort_field < before_dt)
 
     # Restrict to allowed users
     if filter_user_id:
-        qsel = qsel.where(Play.user_id == filter_user_id)
+        query = query.where(Model.user_id == filter_user_id)
     else:
         if include_me:
-            qsel = qsel.where(Play.user_id.in_(list(allowed_ids)))
+            query = query.where(Model.user_id.in_(list(allowed_ids)))
         else:
             # friends only (avoid negative predicate for better index usage)
-            if friends:
-                qsel = qsel.where(Play.user_id.in_(friends))
+            if friends_ids:
+                query = query.where(Model.user_id.in_(friends_ids))
             else:
                 # No friends, force empty result fast
-                qsel = qsel.where(Play.user_id == "__none__")
+                query = query.where(Model.user_id == "__none__")
 
     # Exclude items ignored globally or by current user (by track or by any artist)
     if not show_ignored:
         ignore_global_track = exists(
             select(GlobalIgnoredTrack).where(
-                GlobalIgnoredTrack.track_id == Play.track_id
+                GlobalIgnoredTrack.track_id == Model.track_id
             )
         )
         ignore_global_artist = exists(
             select(GlobalIgnoredArtist)
             .join(TrackArtist, TrackArtist.artist_id == GlobalIgnoredArtist.artist_id)
-            .where(TrackArtist.track_id == Play.track_id)
+            .where(TrackArtist.track_id == Model.track_id)
         )
         ignore_user_track = exists(
             select(IgnoredTrack).where(
                 IgnoredTrack.user_id == current_user.id,
-                IgnoredTrack.track_id == Play.track_id,
+                IgnoredTrack.track_id == Model.track_id,
             )
         )
         ignore_user_artist = exists(
@@ -120,109 +100,79 @@ async def recent_activity(
             .join(TrackArtist, TrackArtist.artist_id == IgnoredArtist.artist_id)
             .where(
                 IgnoredArtist.user_id == current_user.id,
-                TrackArtist.track_id == Play.track_id,
+                TrackArtist.track_id == Model.track_id,
             )
         )
-        qsel = qsel.where(
+        query = query.where(
             ~ignore_global_track,
             ~ignore_global_artist,
             ~ignore_user_track,
             ~ignore_user_artist,
         )
 
-    # Free-text search across fields
-    def _date_range_for_token(tok: str) -> tuple[datetime, datetime] | None:
-        try:
-            if len(tok) == 4 and tok.isdigit():
-                y = int(tok)
-                start = datetime(y, 1, 1, tzinfo=timezone.utc)
-                end = datetime(y + 1, 1, 1, tzinfo=timezone.utc)
-                return start, end
-            if (
-                len(tok) == 7
-                and tok[:4].isdigit()
-                and tok[4] == "-"
-                and tok[5:7].isdigit()
-            ):
-                y, m = int(tok[:4]), int(tok[5:7])
-                start = datetime(y, m, 1, tzinfo=timezone.utc)
-                if m == 12:
-                    end = datetime(y + 1, 1, 1, tzinfo=timezone.utc)
-                else:
-                    end = datetime(y, m + 1, 1, tzinfo=timezone.utc)
-                return start, end
-            if len(tok) == 10 and tok[4] == "-" and tok[7] == "-":
-                y, m, d = int(tok[:4]), int(tok[5:7]), int(tok[8:10])
-                start = datetime(y, m, d, tzinfo=timezone.utc)
-                end = start + timedelta(days=1)
-                return start, end
-        except Exception:
-            return None
-        return None
-
     if q:
         # Split by whitespace, AND across terms
         tokens = [t for t in q.strip().split() if t]
         for tok in tokens:
             # For each token, match any of the allowed fields (OR)
-            date_rng = _date_range_for_token(tok)
+            date_rng = date_range_for_token(tok)
             if date_rng:
-                term_clause = and_(Play.date >= date_rng[0], Play.date < date_rng[1])
-                qsel = qsel.where(term_clause)
+                term_clause = and_(sort_field >= date_rng[0], sort_field < date_rng[1])
+                query = query.where(term_clause)
             else:
                 like = f"%{tok}%"
                 # track title
                 track_title_clause = exists(
                     select(Track.id).where(
-                        Track.id == Play.track_id, Track.title.ilike(like)
+                        Track.id == Model.track_id, Track.title.ilike(like)
                     )
                 )
                 # album name
                 album_clause = exists(
                     select(Album.id)
                     .join(Track, Track.album_id == Album.id)
-                    .where(Track.id == Play.track_id, Album.name.ilike(like))
+                    .where(Track.id == Model.track_id, Album.name.ilike(like))
                 )
                 # artist name
                 artist_clause = exists(
                     select(Artist.id)
                     .join(TrackArtist, TrackArtist.artist_id == Artist.id)
                     .where(
-                        TrackArtist.track_id == Play.track_id, Artist.name.ilike(like)
+                        TrackArtist.track_id == Model.track_id, Artist.name.ilike(like)
                     )
                 )
                 # user.name or username
                 user_clause = exists(
                     select(User.id).where(
-                        User.id == Play.user_id,
+                        User.id == Model.user_id,
                         or_(User.name.ilike(like), User.username.ilike(like)),
                     )
                 )
-                qsel = qsel.where(
+                query = query.where(
                     or_(track_title_clause, album_clause, artist_clause, user_clause)
                 )
 
-    qsel = qsel.limit(limit)
-    plays: list[Play] = session.exec(qsel).all()
+    query = query.limit(limit)
+    items: list[Model] = session.exec(query).all()
 
-    if not plays:
+    if not items:
         return {"items": [], "next_before": None}
 
     # Gather related entities in bulk
-    user_ids = list({p.user_id for p in plays})
-    track_ids = list({p.track_id for p in plays})
+    track_ids = {p.track_id for p in items}
 
     users_map: dict[str, User] = {
-        u.id: u for u in session.exec(select(User).where(User.id.in_(user_ids))).all()
+        current_user.id: current_user,
+        **{u.id: u for u in friends},
     }
 
-    tracks: list[Track] = session.exec(
+    tracks: Sequence[Track] = session.exec(
         select(Track).where(Track.id.in_(track_ids))
     ).all()
     tracks_map: dict[str, Track] = {t.id: t for t in tracks}
 
     # Album info
-    album_ids = [t.album_id for t in tracks if t.album_id]
+    album_ids = {t.album_id for t in tracks if t.album_id}
     albums_map: dict[str, Album] = {
         a.id: a
         for a in session.exec(select(Album).where(Album.id.in_(album_ids))).all()
@@ -249,12 +199,12 @@ async def recent_activity(
         track_artists[k] = [x for x in v if x]
 
     # Build items
-    items: list[dict[str, Any]] = []
-    for p in plays:
+    results: list[dict[str, Any]] = []
+    for p in items:
         u = users_map.get(p.user_id)
         t = tracks_map.get(p.track_id)
         album = albums_map.get(t.album_id) if (t and t.album_id) else None
-        items.append(
+        results.append(
             {
                 "user": {
                     "id": u.id if u else p.user_id,
@@ -280,10 +230,35 @@ async def recent_activity(
                     ),
                     "artists": track_artists.get(p.track_id, []),
                 },
-                "played_at": p.date.isoformat(),
+                field: getattr(p, field).isoformat(),
                 "context_uri": p.context_uri,
             }
         )
 
-    next_before = items[-1]["played_at"] if len(items) == limit else None
-    return {"items": items, "next_before": next_before}
+    next_before = getattr(items[-1], field) if len(items) == limit else None
+    return {"items": results, "next_before": next_before}
+
+
+@router.get("/recent")
+async def recent_activity(
+    session: Session = Depends(get_session),
+    current_user: User | None = Depends(current_user),
+    limit: int = Query(20, ge=1, le=100),
+    before: str | None = None,
+    include_me: bool = True,
+    user: str | None = None,  # target username
+    q: str | None = None,  # free-search
+    show_ignored: bool = Query(False, description="Include ignored tracks and artists"),
+):
+    # Base query
+    return get_page(
+        Model=Play,
+        session=session,
+        current_user=current_user,
+        limit=limit,
+        before=before,
+        include_me=include_me,
+        user=user,
+        q=q,
+        show_ignored=show_ignored,
+    )

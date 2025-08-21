@@ -30,7 +30,7 @@ export function RecentPlayItem({
   item: RecentItem;
   showIgnore?: boolean;
 }) {
-  const time = formatLocalDateTime(item.played_at);
+  const time = formatLocalDateTime(item.date);
   const albumPic = item.track.album?.picture ?? null;
   return (
     <li className="recent-item" data-testid="recent-item">
@@ -140,7 +140,7 @@ export function RecentActivityWidget({
         {status === "success" &&
           items.map((it) => (
             <RecentPlayItem
-              key={`${it.user.id}-${it.track.id}-${it.played_at}`}
+              key={`${it.user.id}-${it.track.id}-${it.date}`}
               item={it}
               showIgnore={false}
             />

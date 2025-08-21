@@ -1,16 +1,22 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, select
-
 from models.auth import User
 from models.common import get_session
 from models.friendship import Friendship, FriendshipStatus
 from routes.deps import current_user
 from services.friendship import (
-    request_friendship as svc_request_friendship,
     accept_friendship as svc_accept_friendship,
+)
+from services.friendship import (
     decline_friendship as svc_decline_friendship,
+)
+from services.friendship import (
+    request_friendship as svc_request_friendship,
+)
+from services.friendship import (
     unfriend as svc_unfriend,
 )
+from sqlalchemy import or_
+from sqlmodel import Session, select
 
 router = APIRouter(prefix="/friendship")
 
@@ -189,3 +195,17 @@ async def unfriend(
         raise HTTPException(status_code=400, detail=str(e))
 
     return {"message": "Unfriended"}
+
+
+def get_friends(session: Session, user: User) -> list[User]:
+    friendships = session.exec(
+        select(Friendship).where(
+            Friendship.status == FriendshipStatus.accepted,
+            or_(Friendship.user_low_id == user.id, Friendship.user_high_id == user.id),
+        )
+    ).all()
+    friends_ids = [
+        fr.user_high_id if user.id == fr.user_low_id else fr.user_low_id
+        for fr in friendships
+    ]
+    return list(session.exec(select(User).where(User.id.in_(friends_ids))).all())

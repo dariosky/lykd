@@ -154,7 +154,7 @@ export interface RecentUserRef {
 export interface RecentItem {
   user: RecentUserRef;
   track: RecentTrack;
-  played_at: string;
+  date: string;
   context_uri?: string | null;
 }
 

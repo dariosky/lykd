@@ -180,7 +180,7 @@ export default function RecentPlaysPage() {
                 );
                 return (
                   <div
-                    key={`${it.user.id}-${it.track.id}-${it.played_at}`}
+                    key={`${it.user.id}-${it.track.id}-${it.date}`}
                     className="recent-row"
                   >
                     <button
