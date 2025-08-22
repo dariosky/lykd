@@ -88,9 +88,11 @@ export function RecentPlayItem({
         // Create browser device and transfer playback
         const deviceId = await ensureWebPlaybackDevice();
         await apiService.transferPlayback(deviceId, true);
+        // Wait briefly to ensure device is ready
+        await new Promise((resolve) => setTimeout(resolve, 500));
         const resp = await doPlay();
         publishPlayed(resp);
-        setTimeout(() => {}, 300);
+        // No error alert shown if retry succeeds
       } catch (e2) {
         alert((e2 as Error)?.message || "Cannot start web playback");
       }
