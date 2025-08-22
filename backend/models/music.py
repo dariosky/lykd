@@ -120,7 +120,9 @@ class Playlist(SQLModel, CamelModel, table=True):
     picture: str | None = None
     owner_id: str = Field(foreign_key="users.id")
     is_public: bool = True
+    is_collaborative: bool = False
     uri: str | None = None
+    snapshot_id: str | None = None  # snapshot change when playlist is updated
 
     # Relationship to get tracks through PlaylistTrack
     playlist_tracks: list["PlaylistTrack"] = Relationship(back_populates="playlist")

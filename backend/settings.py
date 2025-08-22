@@ -13,8 +13,8 @@ load_dotenv(env_path)
 SESSION_SECRET_KEY = os.getenv("SESSION_SECRET_KEY")
 if not SESSION_SECRET_KEY:  # pragma: no cover
     raise ValueError("SESSION_SECRET_KEY must be set")
-SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
-SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
+SPOTIFY_CLIENT_ID = os.getenv("LYKD_CLIENT_ID")
+SPOTIFY_CLIENT_SECRET = os.getenv("LYKD_CLIENT_SECRET")
 
 
 BACKEND_DIR = Path(__file__).parent

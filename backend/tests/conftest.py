@@ -20,8 +20,8 @@ if str(BACKEND_DIR) not in sys.path:
 # Set test environment before importing backend modules
 os.environ["TESTING"] = "true"
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
-os.environ["SPOTIFY_CLIENT_ID"] = "test_client_id"
-os.environ["SPOTIFY_CLIENT_SECRET"] = "test_client_secret"
+os.environ["LYKD_CLIENT_ID"] = "test_client_id"
+os.environ["LYKD_CLIENT_SECRET"] = "test_client_secret"
 os.environ["SESSION_SECRET_KEY"] = "test_secret_key"
 os.environ["TESTING_MODE"] = "True"
 os.environ["CACHE_ENABLED"] = "False"

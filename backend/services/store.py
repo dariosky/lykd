@@ -1,4 +1,4 @@
-from sqlmodel import Session, delete, select
+from sqlmodel import Session, delete, select, update
 
 from models.auth import User
 from models.common import get_db
@@ -106,16 +106,22 @@ def store_track(track, db_session: Session):
 
 
 def store_playlist(playlist: dict, db_session: Session):
-    p = Playlist(
-        id=playlist["id"],
+    values = dict(
         name=playlist["name"],
         description=playlist["description"],
         picture=playlist["images"][0]["url"] if playlist.get("images") else None,
         owner_id=playlist["owner"]["id"],
         is_public=playlist["public"],
+        is_collaborative=playlist["collaborative"],
         uri=playlist["uri"],
     )
-    p = db_session.merge(p)
+    p = db_session.get(Playlist, playlist["id"])
+    if p:
+        for k, v in values.items():
+            setattr(p, k, v)
+    else:
+        p = Playlist(id=playlist["id"], **values)
+        db_session.add(p)
     return p
 
 
@@ -124,6 +130,7 @@ def update_playlist_db(
     tracks_to_add: list[PlaylistTrack],
     tracks_to_remove: set[str],
     db: Session,
+    snapshot_id: str | None = None,
 ):
     for playlist_track in tracks_to_add:
         db.merge(playlist_track)
@@ -133,6 +140,12 @@ def update_playlist_db(
                 PlaylistTrack.playlist_id == playlist_id,
                 PlaylistTrack.track_id.in_(tuple(tracks_to_remove)),
             )
+        )
+    if snapshot_id is not None:
+        db.exec(
+            update(Playlist)
+            .where(Playlist.id == playlist_id)
+            .values(snapshot_id=snapshot_id)
         )
 
 

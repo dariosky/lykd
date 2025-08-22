@@ -92,15 +92,28 @@ async def process_likes(
         playlist: Playlist
         # DONE: the Spotify playlist has different likes than the DB
         # in the full_scan we should retrieve also the whole playlist to decide what
-        logger.debug(f"Full scan to sync playlist {playlist_name}")
-        playlist_request = partial(spotify.get_playlist_tracks, playlist_id=playlist.id)
-        # TODO: Don't do a full-scan if the snapshot is unchanged
-        existing_spotify_tracks = await spotify.get_all(
-            user=user, db_session=db, request=playlist_request
-        )
-        existing_tracks_ids = {
-            item.get("track", {}).get("id") for item in existing_spotify_tracks
-        }
+        # DONE: Don't do a full-scan if the snapshot is unchanged
+        if playlist.snapshot_id != spotify_playlist.get("snapshot_id"):
+            logger.debug(f"Full scan to sync playlist {playlist_name}")
+            playlist_request = partial(
+                spotify.get_playlist_tracks, playlist_id=playlist.id
+            )
+            logger.debug("Refreshing existing playlist tracks from Spotify")
+            existing_spotify_tracks = await spotify.get_all(
+                user=user, db_session=db, request=playlist_request
+            )
+            existing_tracks_ids = {
+                item.get("track", {}).get("id") for item in existing_spotify_tracks
+            }
+        else:
+            existing_tracks_ids = {
+                pt.track_id
+                for pt in db.exec(
+                    select(PlaylistTrack).where(
+                        PlaylistTrack.playlist_id == playlist.id,
+                    )
+                )
+            }
     else:
         # we assume that the playlist contains what we knew from the DB
         existing_tracks_ids = all_db_like_ids
@@ -123,7 +136,7 @@ async def process_likes(
                     f" Error processing track {track_data.get('name', 'Unknown')}: {e}"
                 )
 
-        await spotify.change_playlist(
+        new_change_snapshot = await spotify.change_playlist(
             user=user,
             db_session=db,
             playlist_id=playlist.id,
@@ -160,6 +173,7 @@ async def process_likes(
                 for like in new_likes
             ],
             tracks_to_remove=tracks_to_remove,
+            snapshot_id=new_change_snapshot if full_scan else None,
             db=db,
         )
         db.commit()

@@ -355,6 +355,7 @@ class Spotify:
 
         # Remove tracks first if specified
         url = f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks"
+        snapshot_id = None
         if tracks_to_remove:
             logger.debug(
                 f"Removing {len(tracks_to_remove)} tracks from playlist {playlist_id}"
@@ -376,6 +377,7 @@ class Spotify:
                     raise exception_from_response(
                         remove_response, f"Remove tracks from {url} failed"
                     )
+                snapshot_id = remove_response.text
 
         # Add tracks if specified
         if tracks_to_add:
@@ -400,6 +402,8 @@ class Spotify:
                     raise exception_from_response(
                         add_response, f"Add tracks to {url} failed"
                     )
+                snapshot_id = remove_response.text
+        return snapshot_id
 
     async def yield_tracks(
         self, user: User, db_session: Session, tracks: set

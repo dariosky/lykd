@@ -260,5 +260,5 @@ class TestApplicationConfiguration:
 
         # These should be set by our test configuration
         assert os.getenv("TESTING") == "true"
-        assert os.getenv("SPOTIFY_CLIENT_ID") == "test_client_id"
+        assert os.getenv("LYKD_CLIENT_ID") == "test_client_id"
         assert os.getenv("DATABASE_URL") == "sqlite:///:memory:"
