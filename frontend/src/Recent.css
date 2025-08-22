@@ -91,13 +91,47 @@
 }
 
 .recent-avatar.placeholder {
-  width: 40px;
-  height: 40px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* Play overlay */
+.recent-avatar-wrap {
+  position: relative;
+  width: 60px;
+  height: 60px;
+}
+
+.play-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.35);
+  border: none;
+  outline: none;
+  cursor: pointer;
+  border-radius: 2px;
+  opacity: 0;
+  transform: scale(0.96);
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
+}
+
+.recent-avatar-wrap:hover .play-overlay {
+  opacity: 1;
+  transform: scale(1);
 }
 
 .recent-main {

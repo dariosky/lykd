@@ -1,7 +1,6 @@
 import React from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { apiService, queryKeys, RecentItem } from "./api";
-import Layout from "./Layout";
 import { RecentPlayItem } from "./RecentActivity";
 import { Link, useSearchParams } from "react-router-dom";
 import "./Recent.css";
@@ -95,103 +94,99 @@ export default function RecentPlaysPage() {
   };
 
   return (
-    <Layout>
-      <div className="recent-page">
-        <div className="page-header">
-          <Link to="/" className="back-link">
-            ← Back to Home
-          </Link>
-          <div className="title-row">
-            <h1 className="page-title">Recent Activity</h1>
-            <div className="actions">
-              <label className="recent-menu-item">
-                <input
-                  type="checkbox"
-                  checked={excludeMe}
-                  onChange={(e) => toggleExclude(e.target.checked)}
-                  disabled={!!filterUser}
-                />
-                <span>Exclude my activity</span>
-              </label>
-            </div>
-          </div>
-          <div className="filters">
-            {filterUser ? (
-              <div className="filter-chip">
-                Filtering by: {filterUser}
-                <button className="chip-clear" onClick={clearFilter}>
-                  Clear
-                </button>
-              </div>
-            ) : (
-              <div className="filter-chip muted">All users</div>
-            )}
-          </div>
-          <div className="search">
-            <input
-              className="search-input"
-              type="search"
-              placeholder="Search title, album, artist, user or date"
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-            />
+    <div className="recent-page">
+      <div className="page-header">
+        <Link to="/" className="back-link">
+          ← Back to Home
+        </Link>
+        <div className="title-row">
+          <h1 className="page-title">Recent Activity</h1>
+          <div className="actions">
+            <label className="recent-menu-item">
+              <input
+                type="checkbox"
+                checked={excludeMe}
+                onChange={(e) => toggleExclude(e.target.checked)}
+                disabled={!!filterUser}
+              />
+              <span>Exclude my activity</span>
+            </label>
           </div>
         </div>
-
-        <div className="page-content">
-          <ul className="recent-list large">
-            {status === "pending" && (
-              <div className="recent-loading">Loading…</div>
-            )}
-            {status === "error" && (
-              <div className="recent-error">
-                Failed to load recent activity.
-              </div>
-            )}
-            {status === "success" &&
-              items.map((it) => {
-                const pillName = it.user.name ?? it.user.username ?? "Unknown";
-                const avatar = it.user.picture ? (
-                  <img
-                    className="pill-avatar"
-                    src={it.user.picture}
-                    alt={pillName}
-                  />
-                ) : (
-                  <div className="initials-avatar" aria-hidden>
-                    {(it.user.username || it.user.name || "?")
-                      ?.slice(0, 1)
-                      .toUpperCase()}
-                  </div>
-                );
-                return (
-                  <div
-                    key={`${it.user.id}-${it.track.id}-${it.date}`}
-                    className="recent-row"
-                  >
-                    <button
-                      className="user-pill"
-                      onClick={() => onItemUserClick(it)}
-                      data-name={pillName}
-                    >
-                      {avatar}
-                      <span>{pillName}</span>
-                    </button>
-                    <RecentPlayItem item={it} userLinkBase="/recent" />
-                  </div>
-                );
-              })}
-          </ul>
-          {hasNextPage && (
-            <div ref={loadMoreRef} className="recent-load-more" aria-hidden>
-              {isFetchingNextPage ? "Loading more…" : ""}
+        <div className="filters">
+          {filterUser ? (
+            <div className="filter-chip">
+              Filtering by: {filterUser}
+              <button className="chip-clear" onClick={clearFilter}>
+                Clear
+              </button>
             </div>
+          ) : (
+            <div className="filter-chip muted">All users</div>
           )}
-          {items.length === 0 && status === "success" && (
-            <div className="recent-empty large">No recent activity.</div>
-          )}
+        </div>
+        <div className="search">
+          <input
+            className="search-input"
+            type="search"
+            placeholder="Search title, album, artist, user or date"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+          />
         </div>
       </div>
-    </Layout>
+
+      <div className="page-content">
+        <ul className="recent-list large">
+          {status === "pending" && (
+            <div className="recent-loading">Loading…</div>
+          )}
+          {status === "error" && (
+            <div className="recent-error">Failed to load recent activity.</div>
+          )}
+          {status === "success" &&
+            items.map((it) => {
+              const pillName = it.user.name ?? it.user.username ?? "Unknown";
+              const avatar = it.user.picture ? (
+                <img
+                  className="pill-avatar"
+                  src={it.user.picture}
+                  alt={pillName}
+                />
+              ) : (
+                <div className="initials-avatar" aria-hidden>
+                  {(it.user.username || it.user.name || "?")
+                    ?.slice(0, 1)
+                    .toUpperCase()}
+                </div>
+              );
+              return (
+                <div
+                  key={`${it.user.id}-${it.track.id}-${it.date}`}
+                  className="recent-row"
+                >
+                  <button
+                    className="user-pill"
+                    onClick={() => onItemUserClick(it)}
+                    data-name={pillName}
+                  >
+                    {avatar}
+                    <span>{pillName}</span>
+                  </button>
+                  <RecentPlayItem item={it} userLinkBase="/recent" />
+                </div>
+              );
+            })}
+        </ul>
+        {hasNextPage && (
+          <div ref={loadMoreRef} className="recent-load-more" aria-hidden>
+            {isFetchingNextPage ? "Loading more…" : ""}
+          </div>
+        )}
+        {items.length === 0 && status === "success" && (
+          <div className="recent-empty large">No recent activity.</div>
+        )}
+      </div>
+    </div>
   );
 }

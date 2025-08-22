@@ -1,6 +1,5 @@
 import React from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import Layout from "./Layout";
 import { apiService, queryKeys, SpotifyStats } from "./api";
 import "./SpotifyImport.css";
 import { Link } from "react-router-dom";
@@ -83,113 +82,108 @@ function SpotifyImportPage() {
     : null;
 
   return (
-    <Layout>
-      <div className="import-page">
-        <div className="import-header">
-          <Link to="/settings" className="back-link">
-            ← Back to Settings
-          </Link>
-          <h1>Import your full Spotify streaming history</h1>
-        </div>
+    <div className="import-page">
+      <div className="import-header">
+        <Link to="/settings" className="back-link">
+          ← Back to Settings
+        </Link>
+        <h1>Import your full Spotify streaming history</h1>
+      </div>
 
-        <div className="import-content">
-          <section className="import-card">
-            <h2>Why this is needed</h2>
-            <p>
-              Probably you want to get stats about all your Spotify history -
-              not only from now on.
-            </p>
-            <p>
-              Spotify's public APIs allow apps like LYKD to fetch up to 24 hours
-              of listening data from the moment you first connect your account.
-              To import your complete listening history, you need to request the
-              Extended streaming history directly from Spotify.
-            </p>
-            <p>
-              Go to the Spotify privacy page and request your Extended streaming
-              history. Spotify will prepare the data and send it to your email
-              within a couple of days.
-            </p>
-            <p>
-              Privacy page:{" "}
-              <a
-                href="https://www.spotify.com/ca-en/account/privacy/"
-                target="_blank"
-                rel="noreferrer"
-                className="link"
-              >
-                https://www.spotify.com/ca-en/account/privacy/
-              </a>
-            </p>
-            <p>
-              Once you receive the email, download the ZIP file and upload it
-              below to import your past listening history into LYKD.
-            </p>
-          </section>
+      <div className="import-content">
+        <section className="import-card">
+          <h2>Why this is needed</h2>
+          <p>
+            Probably you want to get stats about all your Spotify history - not
+            only from now on.
+          </p>
+          <p>
+            Spotify's public APIs allow apps like LYKD to fetch up to 24 hours
+            of listening data from the moment you first connect your account. To
+            import your complete listening history, you need to request the
+            Extended streaming history directly from Spotify.
+          </p>
+          <p>
+            Go to the Spotify privacy page and request your Extended streaming
+            history. Spotify will prepare the data and send it to your email
+            within a couple of days.
+          </p>
+          <p>
+            Privacy page:{" "}
+            <a
+              href="https://www.spotify.com/ca-en/account/privacy/"
+              target="_blank"
+              rel="noreferrer"
+              className="link"
+            >
+              https://www.spotify.com/ca-en/account/privacy/
+            </a>
+          </p>
+          <p>
+            Once you receive the email, download the ZIP file and upload it
+            below to import your past listening history into LYKD.
+          </p>
+        </section>
 
-          <section className="import-card">
-            {lastSyncHuman && (
-              <>
-                <p className="subtitle">
-                  You already uploaded your full history sync on {lastSyncHuman}
-                  .
-                </p>
-                <div className="stat-grid">
-                  <div className="stat-item red">
+        <section className="import-card">
+          {lastSyncHuman && (
+            <>
+              <p className="subtitle">
+                You already uploaded your full history sync on {lastSyncHuman}.
+              </p>
+              <div className="stat-grid">
+                <div className="stat-item red">
+                  <div className="stat-left">
+                    <span className="stat-icon" aria-hidden>
+                      📅
+                    </span>
+                    <span className="stat-label">Last full history upload</span>
+                  </div>
+                  <div className="stat-value">{lastSyncHuman}</div>
+                </div>
+                {typeof stats?.total_plays_synced === "number" && (
+                  <div className="stat-item green">
                     <div className="stat-left">
                       <span className="stat-icon" aria-hidden>
-                        📅
+                        ▶️
                       </span>
-                      <span className="stat-label">
-                        Last full history upload
-                      </span>
+                      <span className="stat-label">Total plays imported</span>
                     </div>
-                    <div className="stat-value">{lastSyncHuman}</div>
+                    <div className="stat-value">
+                      {stats.total_plays_synced.toLocaleString()}
+                    </div>
                   </div>
-                  {typeof stats?.total_plays_synced === "number" && (
-                    <div className="stat-item green">
-                      <div className="stat-left">
-                        <span className="stat-icon" aria-hidden>
-                          ▶️
-                        </span>
-                        <span className="stat-label">Total plays imported</span>
-                      </div>
-                      <div className="stat-value">
-                        {stats.total_plays_synced.toLocaleString()}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-            <h2>Upload your ZIP</h2>
-            {isBlocked ? (
-              <p className="subtitle">
-                Extended history import is temporarily unavailable. Please try
-                again in {humanizeWait(waitSeconds)}.
-              </p>
-            ) : null}
-            <form onSubmit={onUpload} className="upload-form">
-              <input
-                type="file"
-                accept=".zip,application/zip,application/x-zip-compressed"
-                onChange={onFileChange}
-                disabled={isBlocked}
-              />
-              <button
-                type="submit"
-                className="upload-button"
-                disabled={!file || uploadMutation.isPending || isBlocked}
-              >
-                {uploadMutation.isPending ? "Uploading…" : "Upload ZIP"}
-              </button>
-              {message && <p className="success">{message}</p>}
-              {error && <p className="error">{error}</p>}
-            </form>
-          </section>
-        </div>
+                )}
+              </div>
+            </>
+          )}
+          <h2>Upload your ZIP</h2>
+          {isBlocked ? (
+            <p className="subtitle">
+              Extended history import is temporarily unavailable. Please try
+              again in {humanizeWait(waitSeconds)}.
+            </p>
+          ) : null}
+          <form onSubmit={onUpload} className="upload-form">
+            <input
+              type="file"
+              accept=".zip,application/zip,application/x-zip-compressed"
+              onChange={onFileChange}
+              disabled={isBlocked}
+            />
+            <button
+              type="submit"
+              className="upload-button"
+              disabled={!file || uploadMutation.isPending || isBlocked}
+            >
+              {uploadMutation.isPending ? "Uploading…" : "Upload ZIP"}
+            </button>
+            {message && <p className="success">{message}</p>}
+            {error && <p className="error">{error}</p>}
+          </form>
+        </section>
       </div>
-    </Layout>
+    </div>
   );
 }
 

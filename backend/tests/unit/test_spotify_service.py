@@ -3,6 +3,7 @@
 import pytest
 from unittest.mock import patch
 from fastapi import HTTPException
+from sqlmodel import Session
 
 import settings
 from models.auth import User
@@ -117,7 +118,7 @@ class TestSpotifyService:
         assert exc_info.value.status_code == 400
 
     async def test_get_liked_songs_success(
-        self, spotify_service, httpx_mock, mock_spotify_responses
+        self, spotify_service, httpx_mock, mock_spotify_responses, test_session: Session
     ):
         """Test successful liked songs retrieval."""
         httpx_mock.add_response(
@@ -127,11 +128,15 @@ class TestSpotifyService:
             status_code=200,
         )
 
-        result = await spotify_service.get_liked_page(user=get_test_user())
+        result = await spotify_service.get_liked_page(
+            user=get_test_user(), db_session=test_session
+        )
 
         assert result == mock_spotify_responses["liked_songs"]
 
-    async def test_get_liked_songs_with_pagination(self, spotify_service, httpx_mock):
+    async def test_get_liked_songs_with_pagination(
+        self, spotify_service, httpx_mock, test_session: Session
+    ):
         """Test liked songs retrieval with pagination."""
         # First page
         second_page_url = "https://api.spotify.com/v1/me/tracks?offset=1&limit=1"
@@ -164,7 +169,10 @@ class TestSpotifyService:
         )
 
         result = await spotify_service.get_all(
-            user=get_test_user(), request=spotify_service.get_liked_page, limit=1
+            user=get_test_user(),
+            db_session=test_session,
+            request=spotify_service.get_liked_page,
+            limit=1,
         )
 
         assert len(result) == 2

@@ -33,10 +33,6 @@ function Dashboard() {
 
   return (
     <div className="dashboard">
-      <header className="dashboard-header">
-        {/* ...existing header code... */}
-      </header>
-
       <main className="dashboard-main">
         <div className="dashboard-grid">
           {/* My Activity widget */}

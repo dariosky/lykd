@@ -40,10 +40,11 @@ async def process_likes(
     }
 
     if full_scan:
-        logger.info(f"Full scan for {user.email} likes")
+        logger.info(f"Full scan for {user} likes")
         # Fetch all liked songs from Spotify
         all_spotify_likes = await spotify.get_all(
             user=user,
+            db_session=db,
             request=spotify.get_liked_page,
         )
         logger.info(f"Processing {len(all_spotify_likes)} liked songs for user {user}:")
@@ -68,6 +69,7 @@ async def process_likes(
         new_spotify_likes = []
         async for spotify_like in spotify.yield_from(
             user=user,
+            db_session=db,
             request=spotify.get_liked_page,
         ):
             track_id = spotify_like.get("track", {}).get("id")
@@ -82,7 +84,7 @@ async def process_likes(
 
     if new_spotify_likes or tracks_to_remove or full_scan:
         spotify_playlist = await spotify.get_or_create_playlist(
-            user=user, playlist_name=playlist_name
+            user=user, db_session=db, playlist_name=playlist_name
         )
         playlist = store_playlist(spotify_playlist, db_session=db)
 
@@ -92,8 +94,9 @@ async def process_likes(
         # in the full_scan we should retrieve also the whole playlist to decide what
         logger.debug(f"Full scan to sync playlist {playlist_name}")
         playlist_request = partial(spotify.get_playlist_tracks, playlist_id=playlist.id)
+        # TODO: Don't do a full-scan if the snapshot is unchanged
         existing_spotify_tracks = await spotify.get_all(
-            user=user, request=playlist_request
+            user=user, db_session=db, request=playlist_request
         )
         existing_tracks_ids = {
             item.get("track", {}).get("id") for item in existing_spotify_tracks
@@ -122,6 +125,7 @@ async def process_likes(
 
         await spotify.change_playlist(
             user=user,
+            db_session=db,
             playlist_id=playlist.id,
             tracks_to_add=[  # we need the order of the tracks to be preserved
                 track_id
@@ -181,12 +185,13 @@ async def process_user(db: Session, user: User, spotify: Spotify):
     await process_plays(db, spotify, user)
 
 
-async def process_plays(db, spotify: Spotify, user):
+async def process_plays(db: Session, spotify: Spotify, user):
     # this works a bit differently than likes
     # we yield and stop as soon as we find a play that has been already written
     added = 0
     async for play in spotify.yield_from(
         user=user,
+        db_session=db,
         request=spotify.get_recently_played_page,
     ):
         track_data = play.get("track", {})

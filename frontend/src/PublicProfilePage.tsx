@@ -1,6 +1,5 @@
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import Layout from "./Layout";
 import {
   apiService,
   PublicProfileResponse,
@@ -34,18 +33,6 @@ export default function PublicProfilePage() {
   const { username = "" } = useParams();
   const queryClient = useQueryClient();
 
-  const { data, isLoading, isError, error, refetch, isFetching } = useQuery<
-    PublicProfileResponse,
-    Error
-  >({
-    queryKey: ["publicProfile", username],
-    queryFn: () => apiService.getPublicProfile(username),
-    enabled: !!username,
-    staleTime: 30_000,
-    // Do not retry; surface 500s as errors immediately
-    retry: 0,
-  });
-
   // Current viewer from query (shared with Layout, deduped)
   const { data: viewerResp } = useQuery<UserResponse, Error>({
     queryKey: queryKeys.currentUser,
@@ -55,24 +42,40 @@ export default function PublicProfilePage() {
   });
   const viewer = viewerResp?.user ?? null;
 
+  const { data, isLoading, isError, error, refetch, isFetching } = useQuery<
+    PublicProfileResponse,
+    Error
+  >({
+    queryKey: ["publicProfile", username],
+    queryFn: () => apiService.getPublicProfile(username!),
+    enabled: !!username && viewerResp !== undefined,
+    staleTime: 30_000,
+    // Do not retry; surface 500s as errors immediately
+    retry: 0,
+  });
+
   // Friendship status query
   const {
     data: frStatus,
     refetch: refetchFrStatus,
     isFetching: loadingStatus,
   } = useQuery<FriendshipStatusResponse, Error>({
-    queryKey: queryKeys.friendshipStatus(username),
-    queryFn: () => apiService.getFriendshipStatus(username),
+    queryKey: queryKeys.friendshipStatus(username!),
+    queryFn: () => apiService.getFriendshipStatus(username!),
     enabled: !!username && !!viewer, // only when logged in
     staleTime: 10_000,
   });
 
   // Send request mutation
   const sendRequestMutation = useMutation({
-    mutationFn: () => apiService.sendFriendRequest(username),
+    mutationFn: () => apiService.sendFriendRequest(username!),
     onSuccess: () => {
+      // Optimistically reflect new status
+      queryClient.setQueryData(queryKeys.friendshipStatus(username!), {
+        status: "pending_outgoing",
+      } as any);
       queryClient.invalidateQueries({
-        queryKey: queryKeys.friendshipStatus(username),
+        queryKey: queryKeys.friendshipStatus(username!),
       });
       refetchFrStatus();
       // Also refresh pending list for the other screen if needed
@@ -83,9 +86,10 @@ export default function PublicProfilePage() {
   const isNotFound = isError && error instanceof NotFoundError;
 
   // Decide button label/state
+  const profileUser = data?.user ?? null;
   const status = frStatus?.status;
   const showFriendAction =
-    !!viewer && data && viewer.username !== data.user.username;
+    !!viewer && !!profileUser && viewer.username !== profileUser.username;
   const friendBtn = (() => {
     if (!showFriendAction) return null;
     if (loadingStatus) {
@@ -134,242 +138,239 @@ export default function PublicProfilePage() {
   })();
 
   return (
-    <Layout>
-      <div className="public-profile-page">
-        <div className="public-profile-header">
-          <Link to="/" className="back-link">
-            ← Back to Home
-          </Link>
-          {isLoading && <div className="loading-small">Loading profile…</div>}
+    <div className="public-profile-page">
+      <div className="public-profile-header">
+        <Link to="/" className="back-link">
+          ← Back to Home
+        </Link>
+        {isLoading && <div className="loading-small">Loading profile…</div>}
+      </div>
+
+      {isNotFound && (
+        <div className="public-profile-content">
+          <div className="card empty-state">
+            <div className="empty-icon" aria-hidden>
+              🕵️‍♂️
+            </div>
+            <div className="empty-title">Profile not found</div>
+          </div>
         </div>
+      )}
 
-        {isNotFound && (
-          <div className="public-profile-content">
-            <div className="card empty-state">
-              <div className="empty-icon" aria-hidden>
-                🕵️‍♂️
-              </div>
-              <div className="empty-title">Profile not found</div>
+      {isError && !isNotFound && (
+        <div className="public-profile-content">
+          <div className="card error-box">
+            <div className="error-title">Failed to load profile</div>
+            <div className="error-message">{error?.message}</div>
+            <div className="error-actions">
+              <button
+                className="btn-primary"
+                onClick={() => refetch()}
+                disabled={isFetching}
+              >
+                {isFetching ? "Retrying…" : "Retry"}
+              </button>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {isError && !isNotFound && (
-          <div className="public-profile-content">
-            <div className="card error-box">
-              <div className="error-title">Failed to load profile</div>
-              <div className="error-message">{error?.message}</div>
-              <div className="error-actions">
-                <button
-                  className="btn-primary"
-                  onClick={() => refetch()}
-                  disabled={isFetching}
-                >
-                  {isFetching ? "Retrying…" : "Retry"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {data && (
-          <div className="public-profile-content">
+      {profileUser && (
+        <div className="public-profile-content">
+          <div
+            className="profile-hero"
+            style={{
+              justifyContent: "space-between",
+              gap: "1rem",
+            }}
+          >
             <div
-              className="profile-hero"
               style={{
-                justifyContent: "space-between",
+                display: "flex",
+                alignItems: "center",
                 gap: "1rem",
               }}
             >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "1rem",
-                }}
-              >
-                {data.user.picture && (
-                  <img
-                    src={data.user.picture}
-                    alt={data.user.name}
-                    className="profile-avatar"
-                  />
-                )}
-                <div className="profile-meta">
-                  <h1>{data.user.name}</h1>
-                  <div className="username">@{data.user.username}</div>
+              {profileUser.picture ? (
+                <img
+                  src={profileUser.picture}
+                  alt={profileUser.name}
+                  className="profile-avatar"
+                />
+              ) : null}
+              <div className="profile-meta">
+                <h1>{profileUser.name}</h1>
+                <div className="username">@{profileUser.username}</div>
+              </div>
+            </div>
+            {friendBtn}
+          </div>
+
+          <section className="card">
+            <h2>🎧 Playback Stats</h2>
+            <div className="stat-row">
+              <div className="stat-item red">
+                <div className="stat-left">
+                  <span className="stat-icon" aria-hidden>
+                    ❤️
+                  </span>
+                  <span className="stat-label">Liked songs</span>
+                </div>
+                <div className="stat-value">
+                  {formatNumber(data?.stats?.total_likes ?? 0)}
                 </div>
               </div>
-              {friendBtn}
+
+              <div className="stat-item green">
+                <div className="stat-left">
+                  <span className="stat-icon" aria-hidden>
+                    ▶️
+                  </span>
+                  <span className="stat-label">Total plays</span>
+                </div>
+                <div className="stat-value">
+                  {formatNumber(data?.stats?.total_plays ?? 0)}
+                </div>
+              </div>
             </div>
 
-            <section className="card">
-              <h2>🎧 Playback Stats</h2>
-              <div className="stat-row">
-                <div className="stat-item red">
-                  <div className="stat-left">
-                    <span className="stat-icon" aria-hidden>
-                      ❤️
-                    </span>
-                    <span className="stat-label">Liked songs</span>
-                  </div>
-                  <div className="stat-value">
-                    {formatNumber(data.stats.total_likes)}
-                  </div>
+            <div className="stat-row">
+              <div className="stat-item">
+                <div className="stat-left">
+                  <span className="stat-icon" aria-hidden>
+                    🕒
+                  </span>
+                  <span className="stat-label">Listening time (all time)</span>
                 </div>
+                <div className="stat-value">
+                  {formatDurationDHMS(
+                    data?.stats?.total_listening_time_sec ?? 0,
+                  )}
+                </div>
+              </div>
+              <div className="stat-item">
+                <div className="stat-left">
+                  <span className="stat-icon" aria-hidden>
+                    ⏳
+                  </span>
+                  <span className="stat-label">Listening time (30 days)</span>
+                </div>
+                <div className="stat-value">
+                  {formatDurationDHMS(
+                    data?.stats?.listening_time_last_30_days_sec ?? 0,
+                  )}
+                </div>
+              </div>
+            </div>
 
-                <div className="stat-item green">
-                  <div className="stat-left">
-                    <span className="stat-icon" aria-hidden>
-                      ▶️
-                    </span>
-                    <span className="stat-label">Total plays</span>
-                  </div>
-                  <div className="stat-value">
-                    {formatNumber(data.stats.total_plays)}
-                  </div>
+            <div className="stat-row">
+              <div className="stat-item">
+                <div className="stat-left">
+                  <span className="stat-icon" aria-hidden>
+                    📅
+                  </span>
+                  <span className="stat-label">Tracking since</span>
+                </div>
+                <div className="stat-value">
+                  {formatLocalDate(data?.stats?.tracking_since)}
                 </div>
               </div>
 
-              <div className="stat-row">
-                <div className="stat-item">
-                  <div className="stat-left">
-                    <span className="stat-icon" aria-hidden>
-                      🕒
-                    </span>
-                    <span className="stat-label">
-                      Listening time (all time)
-                    </span>
-                  </div>
-                  <div className="stat-value">
-                    {formatDurationDHMS(data.stats.total_listening_time_sec)}
-                  </div>
+              <div className="stat-item">
+                <div className="stat-left">
+                  <span className="stat-icon" aria-hidden>
+                    🪩
+                  </span>
+                  <span className="stat-label">Most played decade</span>
                 </div>
-                <div className="stat-item">
-                  <div className="stat-left">
-                    <span className="stat-icon" aria-hidden>
-                      ⏳
-                    </span>
-                    <span className="stat-label">Listening time (30 days)</span>
-                  </div>
-                  <div className="stat-value">
-                    {formatDurationDHMS(
-                      data.stats.listening_time_last_30_days_sec,
-                    )}
-                  </div>
+                <div className="stat-value">
+                  {data?.highlights?.most_played_decade || "No data"}
                 </div>
               </div>
+            </div>
+          </section>
 
-              <div className="stat-row">
-                <div className="stat-item">
-                  <div className="stat-left">
-                    <span className="stat-icon" aria-hidden>
-                      📅
-                    </span>
-                    <span className="stat-label">Tracking since</span>
-                  </div>
-                  <div className="stat-value">
-                    {formatLocalDate(data.stats.tracking_since)}
-                  </div>
-                </div>
-
-                <div className="stat-item">
-                  <div className="stat-left">
-                    <span className="stat-icon" aria-hidden>
-                      🪩
-                    </span>
-                    <span className="stat-label">Most played decade</span>
-                  </div>
-                  <div className="stat-value">
-                    {data.highlights.most_played_decade || "No data"}
-                  </div>
-                </div>
+          <section className="card">
+            <h2>🔥 Top Highlights</h2>
+            <div className="highlights-grid">
+              <div className="highlight">
+                <div className="highlight-title">📆 Top songs (30 days)</div>
+                <ul className="list">
+                  {(data?.highlights?.top_songs_30_days ?? []).map((t) => (
+                    <li key={`30-${t.track_id}`} className="list-item">
+                      <div className="list-main">
+                        <div className="list-title">🎵 {t.title}</div>
+                        <div className="list-sub">
+                          {t.artists.join(", ")}
+                          {t.album?.name ? ` • ${t.album.name}` : ""}
+                        </div>
+                      </div>
+                      <div className="list-meta">
+                        ▶️ {formatNumber(t.play_count)} plays
+                        <IgnoreTrackButton
+                          trackId={t.track_id}
+                          className="profile-ignore-btn"
+                        />
+                      </div>
+                    </li>
+                  ))}
+                  {(data?.highlights?.top_songs_30_days ?? []).length === 0 && (
+                    <li className="list-empty">No data</li>
+                  )}
+                </ul>
               </div>
-            </section>
-
-            <section className="card">
-              <h2>🔥 Top Highlights</h2>
-              <div className="highlights-grid">
-                <div className="highlight">
-                  <div className="highlight-title">📆 Top songs (30 days)</div>
-                  <ul className="list">
-                    {data.highlights.top_songs_30_days.map((t) => (
-                      <li key={`30-${t.track_id}`} className="list-item">
-                        <div className="list-main">
-                          <div className="list-title">🎵 {t.title}</div>
-                          <div className="list-sub">
-                            {t.artists.join(", ")}
-                            {t.album?.name ? ` • ${t.album.name}` : ""}
-                          </div>
+              <div className="highlight">
+                <div className="highlight-title">🏆 Top songs (all time)</div>
+                <ul className="list">
+                  {(data?.highlights?.top_songs_all_time ?? []).map((t) => (
+                    <li key={`all-${t.track_id}`} className="list-item">
+                      <div className="list-main">
+                        <div className="list-title">🎵 {t.title}</div>
+                        <div className="list-sub">
+                          {t.artists.join(", ")}
+                          {t.album?.name ? ` • ${t.album.name}` : ""}
                         </div>
-                        <div className="list-meta">
-                          ▶️ {formatNumber(t.play_count)} plays
-                          <IgnoreTrackButton
-                            trackId={t.track_id}
-                            className="profile-ignore-btn"
-                          />
-                        </div>
-                      </li>
-                    ))}
-                    {data.highlights.top_songs_30_days.length === 0 && (
-                      <li className="list-empty">No data</li>
-                    )}
-                  </ul>
-                </div>
-                <div className="highlight">
-                  <div className="highlight-title">🏆 Top songs (all time)</div>
-                  <ul className="list">
-                    {data.highlights.top_songs_all_time.map((t) => (
-                      <li key={`all-${t.track_id}`} className="list-item">
-                        <div className="list-main">
-                          <div className="list-title">🎵 {t.title}</div>
-                          <div className="list-sub">
-                            {t.artists.join(", ")}
-                            {t.album?.name ? ` • ${t.album.name}` : ""}
-                          </div>
-                        </div>
-                        <div className="list-meta">
-                          ▶️ {formatNumber(t.play_count)} plays
-                          <IgnoreTrackButton
-                            trackId={t.track_id}
-                            className="profile-ignore-btn"
-                          />
-                        </div>
-                      </li>
-                    ))}
-                    {data.highlights.top_songs_all_time.length === 0 && (
-                      <li className="list-empty">No data</li>
-                    )}
-                  </ul>
-                </div>
-                <div className="highlight">
-                  <div className="highlight-title">🌟 Top artists</div>
-                  <ul className="list">
-                    {data.highlights.top_artists.map((a) => (
-                      <li key={a.artist_id} className="list-item">
-                        <div className="list-main">
-                          <div className="list-title">🎤 {a.name}</div>
-                        </div>
-                        <div className="list-meta">
-                          ▶️ {formatNumber(a.play_count)} plays
-                          <IgnoreArtistButton
-                            artistId={a.artist_id}
-                            artistName={a.name}
-                            className="profile-ignore-btn"
-                          />
-                        </div>
-                      </li>
-                    ))}
-                    {data.highlights.top_artists.length === 0 && (
-                      <li className="list-empty">No data</li>
-                    )}
-                  </ul>
-                </div>
+                      </div>
+                      <div className="list-meta">
+                        ▶️ {formatNumber(t.play_count)} plays
+                        <IgnoreTrackButton
+                          trackId={t.track_id}
+                          className="profile-ignore-btn"
+                        />
+                      </div>
+                    </li>
+                  ))}
+                  {(data?.highlights?.top_songs_all_time ?? []).length ===
+                    0 && <li className="list-empty">No data</li>}
+                </ul>
               </div>
-            </section>
-          </div>
-        )}
-      </div>
-    </Layout>
+              <div className="highlight">
+                <div className="highlight-title">🌟 Top artists</div>
+                <ul className="list">
+                  {(data?.highlights?.top_artists ?? []).map((a) => (
+                    <li key={a.artist_id} className="list-item">
+                      <div className="list-main">
+                        <div className="list-title">🎤 {a.name}</div>
+                      </div>
+                      <div className="list-meta">
+                        ▶️ {formatNumber(a.play_count)} plays
+                        <IgnoreArtistButton
+                          artistId={a.artist_id}
+                          artistName={a.name}
+                          className="profile-ignore-btn"
+                        />
+                      </div>
+                    </li>
+                  ))}
+                  {(data?.highlights?.top_artists ?? []).length === 0 && (
+                    <li className="list-empty">No data</li>
+                  )}
+                </ul>
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
+    </div>
   );
 }

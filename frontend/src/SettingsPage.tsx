@@ -2,9 +2,7 @@ import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { apiService, queryKeys, UserResponse, SpotifyStats } from "./api";
-import Layout from "./Layout";
 import "./SettingsPage.css";
-import { formatLocalDateLong } from "./date";
 
 function SettingsPage() {
   const queryClient = useQueryClient();
@@ -108,38 +106,6 @@ function SettingsPage() {
 
   if (isUserLoading) {
     return (
-      <Layout>
-        <div className="services-page">
-          <div className="services-header">
-            <Link to="../" className="back-link">
-              ← Back to Home
-            </Link>
-            <h1>Settings</h1>
-          </div>
-          <div className="loading">Loading...</div>
-        </div>
-      </Layout>
-    );
-  }
-
-  if (!currentUser) {
-    return (
-      <Layout>
-        <div className="services-page">
-          <div className="services-header">
-            <Link to="../" className="back-link">
-              ← Back to Home
-            </Link>
-            <h1>Settings</h1>
-          </div>
-          <div className="no-user">Please log in to view your settings.</div>
-        </div>
-      </Layout>
-    );
-  }
-
-  return (
-    <Layout>
       <div className="services-page">
         <div className="services-header">
           <Link to="../" className="back-link">
@@ -147,183 +113,148 @@ function SettingsPage() {
           </Link>
           <h1>Settings</h1>
         </div>
+        <div className="loading">Loading...</div>
+      </div>
+    );
+  }
 
-        {/* Username section */}
-        <div className="services-content">
-          <div className="settings-card">
-            <form onSubmit={onSaveUsername} className="settings-form">
-              <div className="settings-form-row">
-                <label htmlFor="username" className="settings-label">
-                  Your public profile name:
-                </label>
-                <div className="input-row">
-                  <span className="input-prefix">@</span>
-                  <input
-                    id="username"
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="settings-input input-with-prefix"
-                    placeholder="yourname"
-                    maxLength={40}
-                    autoComplete="off"
-                  />
-                </div>
-                <div className="settings-hint">
-                  Your public profile link:
-                  <div className="settings-url">
-                    <a href={profilePath} className="link" rel="noreferrer">
-                      {profileUrl}
-                    </a>
-                    <button
-                      type="button"
-                      className="btn-ghost"
-                      onClick={handleCopy}
-                      disabled={!savedUsername}
-                      aria-label="Copy profile link"
-                    >
-                      {copied ? "Copied" : "Copy"}
-                    </button>
-                    {savedUsername && (
-                      <Link to={profilePath} className="btn-secondary">
-                        🌎 View public profile
-                      </Link>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="settings-actions">
-                <button
-                  type="submit"
-                  className="settings-save"
-                  disabled={updateUsernameMutation.isPending}
-                >
-                  {updateUsernameMutation.isPending ? "Saving…" : "Save"}
-                </button>
-                {message && <span className="settings-success">{message}</span>}
-                {error && <span className="settings-error">{error}</span>}
-              </div>
-            </form>
-          </div>
+  if (!currentUser) {
+    return (
+      <div className="services-page">
+        <div className="services-header">
+          <Link to="../" className="back-link">
+            ← Back to Home
+          </Link>
+          <h1>Settings</h1>
         </div>
+        <div className="no-user">Please log in to view your settings.</div>
+      </div>
+    );
+  }
 
-        {/* Services section (existing) */}
-        <div className="services-content">
-          <div className="service-card">
-            <div className="service-card-header">
-              <div className="service-card-left">
-                <div className="service-icon">
-                  <svg
-                    width="32"
-                    height="32"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                  >
-                    <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.84-.179-.84-.66 0-.359.24-.66.54-.78 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.24 1.021zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.42 1.56-.299.421-1.02.599-1.559.3z" />
-                  </svg>
-                </div>
-                <div className="service-info">
-                  <h3>Spotify</h3>
-                  <p className="service-email">{currentUser.email}</p>
-                </div>
+  return (
+    <div className="services-page">
+      <div className="services-header">
+        <Link to="../" className="back-link">
+          ← Back to Home
+        </Link>
+        <h1>Settings</h1>
+      </div>
+
+      {/* Username section */}
+      <div className="services-content">
+        <div className="settings-card">
+          <form onSubmit={onSaveUsername} className="settings-form">
+            <div className="settings-form-row">
+              <label htmlFor="username" className="settings-label">
+                Your public profile name:
+              </label>
+              <div className="input-row">
+                <span className="input-prefix">@</span>
+                <input
+                  id="username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="settings-input input-with-prefix"
+                  placeholder="yourname"
+                  maxLength={40}
+                  autoComplete="off"
+                />
               </div>
-              <div className="service-actions">
-                {isStatsLoading ? (
-                  <div className="status-badge neutral">
-                    <span className="status-dot"></span>
-                    Checking…
-                  </div>
-                ) : spotifyStats?.active ? (
-                  <div className="status-badge connected">
-                    <span className="status-dot"></span>
-                    Active
-                  </div>
-                ) : (
-                  <>
-                    <div className="status-badge disconnected">
-                      <span className="status-dot"></span>
-                      Disconnected
-                    </div>
-                    <button
-                      className="spotify-connect-button"
-                      onClick={handleSpotifyConnect}
-                      disabled={spotifyAuthMutation.isPending}
-                    >
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                      >
-                        <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.84-.179-.84-.66 0-.359.24-.66.54-.78 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.24 1.021zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.42 1.56-.299.421-1.02.599-1.559.3z" />
-                      </svg>
-                      Connect with Spotify
-                    </button>
-                  </>
-                )}
+              <div className="settings-hint">
+                Your public profile link:
+                <div className="settings-url">
+                  <a href={profilePath} className="link" rel="noreferrer">
+                    {profileUrl}
+                  </a>
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    onClick={handleCopy}
+                    disabled={!savedUsername}
+                    aria-label="Copy profile link"
+                  >
+                    {copied ? "Copied" : "Copy"}
+                  </button>
+                  {savedUsername && (
+                    <Link to={profilePath} className="btn-secondary">
+                      🌎 View public profile
+                    </Link>
+                  )}
+                </div>
               </div>
             </div>
+            <div className="settings-actions">
+              <button
+                type="submit"
+                className="settings-save"
+                disabled={updateUsernameMutation.isPending}
+              >
+                {updateUsernameMutation.isPending ? "Saving…" : "Save"}
+              </button>
+              {message && <span className="settings-success">{message}</span>}
+              {error && <span className="settings-error">{error}</span>}
+            </div>
+          </form>
+        </div>
+      </div>
 
-            {/* Spotify Stats - bottom small cards */}
-            <div className="stat-grid">
+      {/* Services section (existing) */}
+      <div className="services-content">
+        <div className="service-card">
+          <div className="service-card-header">
+            <div className="service-card-left">
+              <div className="service-icon">
+                <svg
+                  width="32"
+                  height="32"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.84-.179-.84-.66 0-.359.24-.66.54-.78 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.24 1.021zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.42 1.56-.299.421-1.02.599-1.559.3z" />
+                </svg>
+              </div>
+              <div className="service-info">
+                <h3>Spotify</h3>
+                <p className="service-email">{currentUser.email}</p>
+              </div>
+            </div>
+            <div className="service-actions">
               {isStatsLoading ? (
-                <p className="stats-loading">Loading stats...</p>
-              ) : spotifyStats ? (
-                <>
-                  <div className="stat-item red">
-                    <div className="stat-left">
-                      <span className="stat-icon" aria-hidden>
-                        ❤️
-                      </span>
-                      <span className="stat-label">Likes synced</span>
-                    </div>
-                    <div className="stat-value">
-                      {spotifyStats.total_likes_synced.toLocaleString()}
-                    </div>
-                  </div>
-
-                  <div className="stat-item green">
-                    <div className="stat-left">
-                      <span className="stat-icon" aria-hidden>
-                        ▶️
-                      </span>
-                      <span className="stat-label">Plays imported</span>
-                    </div>
-                    <div className="stat-value">
-                      {spotifyStats.total_plays_synced?.toLocaleString?.() ??
-                        "0"}
-                    </div>
-                  </div>
-
-                  <div className="stat-item red">
-                    <div className="stat-left">
-                      <span className="stat-icon" aria-hidden>
-                        📅
-                      </span>
-                      <span className="stat-label">Tracking since</span>
-                    </div>
-                    <div className="stat-value">
-                      {formatLocalDateLong(
-                        spotifyStats.tracking_since,
-                        "en-US",
-                      )}
-                    </div>
-                  </div>
-                </>
+                <div className="status-badge neutral">
+                  <span className="status-dot"></span>
+                  Checking…
+                </div>
+              ) : spotifyStats?.active ? (
+                <div className="status-badge connected">
+                  <span className="status-dot"></span>
+                  Active
+                </div>
               ) : (
-                <p className="stats-error">Unable to load stats</p>
+                <button
+                  className="btn-primary"
+                  onClick={handleSpotifyConnect}
+                  disabled={spotifyAuthMutation.isPending}
+                >
+                  {spotifyAuthMutation.isPending
+                    ? "Connecting…"
+                    : "Connect Spotify"}
+                </button>
               )}
             </div>
+          </div>
 
-            <div className="service-footer">
-              <Link to="/spotify/import" className="import-link">
-                Import the full streaming history →
-              </Link>
-            </div>
+          {/* Extended history import shortcut */}
+          <div className="service-card-body">
+            <p>Import your full streaming history to unlock lifetime stats.</p>
+            <Link to="/spotify/import" className="btn-secondary">
+              Import extended history
+            </Link>
           </div>
         </div>
       </div>
-    </Layout>
+    </div>
   );
 }
 

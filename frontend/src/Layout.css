@@ -105,7 +105,7 @@
   font-weight: 600;
   cursor: pointer;
   transition: opacity 0.2s ease;
-  margin-right: 50px;
+  margin: auto 50px auto 0;
 }
 
 .header-logo:hover {
@@ -115,6 +115,7 @@
 .header-logo .logo {
   width: 32px;
   height: 32px;
+  margin-bottom: 10px;
 }
 
 .header-actions {

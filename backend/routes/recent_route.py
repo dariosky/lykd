@@ -276,6 +276,7 @@ async def user_likes(
     show_ignored: bool = Query(False, description="Include ignored tracks and artists"),
 ):
     # Base query
+    # TODO: Fix - seeing duplicates in likes
     return get_page(
         Model=Like,
         session=session,

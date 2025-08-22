@@ -84,13 +84,15 @@ def test_app(override_get_session):
     from models.common import get_session
 
     app.dependency_overrides[get_session] = override_get_session
-    return app
+    yield app
+    del app.dependency_overrides[get_session]
 
 
 @pytest.fixture
 def client(test_app):
     """Create a test client."""
-    return TestClient(test_app)
+    with TestClient(test_app) as client:
+        yield client
 
 
 @pytest.fixture

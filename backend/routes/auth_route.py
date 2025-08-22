@@ -38,6 +38,7 @@ async def get_current_user_info(
             "picture": user.picture,
             "join_date": user.join_date.isoformat(),
             "is_admin": user.is_admin,
+            "subscribed": user.subscribed,
         }
     }
 
@@ -87,5 +88,6 @@ async def set_username(
             "picture": db_user.picture,
             "join_date": db_user.join_date.isoformat(),
             "is_admin": db_user.is_admin,
+            "subscribed": db_user.subscribed,
         }
     }

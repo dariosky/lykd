@@ -1,6 +1,7 @@
 import logging
 import os
 import tomllib
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import settings
@@ -13,6 +14,7 @@ from routes.spotify_route import router as spotify_router
 from routes.friendship import router as friendship_router
 from routes.recent_route import router as recent_router
 from routes.ignore_route import router as ignore_router
+from services import Spotify
 from settings import PROJECT_PATH
 from starlette.middleware import Middleware
 from starlette.middleware.sessions import SessionMiddleware
@@ -50,9 +52,21 @@ def update_database():  # pragma: no cover
         logger.exception(f"Cannot run DB migrations: {e}")
 
 
+@asynccontextmanager
+async def app_lifespan(app: FastAPI):
+    """Lifespan context manager for FastAPI app"""
+    logger.debug("Starting...")
+    update_database()
+    spotify = Spotify()
+    app.state.spotify = spotify
+    yield
+    await spotify.close()
+    logger.debug("Closing app")
+
+
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application"""
-    update_database()
+
     app = FastAPI(
         title="LYKD",
         description="Your likes made social",
@@ -64,6 +78,7 @@ def create_app() -> FastAPI:
         swagger_ui_parameters={
             "defaultModelsExpandDepth": 0,
         },  # collapse the swagger schema
+        lifespan=app_lifespan,
     )
 
     # Mount routers

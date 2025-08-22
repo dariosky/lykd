@@ -122,9 +122,11 @@ LYKD expands on this concept by creating a full web application that makes your 
 - [x] Friend requests and acceptance flow
 - [x] Do a quick sync of likes often - and a full sync (for deletions) every 12h
 - [x] Add an ignore and report button (to ignore and propose a global ignore)
-- [ ] Add Likes page and a "like" button
-- [ ] Add suggestions (including songs listened recently)
+- [x] Add Likes page
 - [ ] Add a web player
+- [ ] Add a "like" button
+- [ ] Sync playlists (include snapshots)
+- [ ] Add suggestions (including songs listened recently)
 - [ ] Send email for friend requests
-- [ ] Sync playlists
 - [ ] Sync followed artists
+- [ ] Support both Spotlike and Lykd app and migrate users

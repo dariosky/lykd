@@ -1,11 +1,11 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { apiService, queryKeys, ApiStatus, UserResponse } from "./api";
-import Layout from "./Layout";
+import { apiService, ApiStatus, queryKeys, UserResponse } from "./api";
 import Homepage from "./Homepage";
 import Dashboard from "./Dashboard";
 import "./App.css";
+import { Footer } from "./Footer.tsx";
 
 function App() {
   const navigate = useNavigate();
@@ -53,41 +53,18 @@ function App() {
     );
   }
 
-  // If user is not logged in, show Homepage without Layout
+  // If user is not logged in, show Homepage (without footer here)
   if (!currentUser) {
     return <Homepage />;
   }
 
-  // If user is logged in, show Dashboard with Layout
+  // If user is logged in, show Dashboard; footer remains part of this page
   return (
-    <Layout>
+    <>
       <Dashboard />
 
-      <footer className="footer">
-        <div className="footer-content">
-          {isLoading && (
-            <div className="status-indicator loading">
-              <span>Connecting to backend...</span>
-            </div>
-          )}
-          {error && (
-            <div className="status-indicator error">
-              <span>Backend connection failed</span>
-            </div>
-          )}
-          {apiStatus && (
-            <>
-              <div className="status-indicator">
-                <div className="status-dot"></div>
-                <span>Backend: {apiStatus.status}</span>
-              </div>
-              <span>•</span>
-              <span>Version: {apiStatus.version}</span>
-            </>
-          )}
-        </div>
-      </footer>
-    </Layout>
+      <Footer loading={isLoading} error={error} apiStatus={apiStatus} />
+    </>
   );
 }
 

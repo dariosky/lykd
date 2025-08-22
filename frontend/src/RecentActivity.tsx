@@ -1,10 +1,12 @@
 import React from "react";
-import { useInfiniteQuery } from "@tanstack/react-query";
-import { apiService, queryKeys, RecentItem } from "./api";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { apiService, queryKeys, RecentItem, PlayResponse } from "./api";
 import { IgnoreTrackButton } from "./IgnoreButtons";
 import "./Recent.css";
 import { formatLocalDateTime } from "./date";
 import { Link } from "react-router-dom";
+import { ensureWebPlaybackDevice } from "./spotifyWeb";
+import { emit } from "./playbackBus";
 
 export function useLocalStorageBoolean(key: string, initial: boolean) {
   const [value, setValue] = React.useState<boolean>(() => {
@@ -28,28 +30,95 @@ export function RecentPlayItem({
   item,
   showIgnore = true,
   userLinkBase = "/recent",
+  source = "recent",
 }: {
   item: RecentItem;
   showIgnore?: boolean;
   userLinkBase?: string;
+  source?: "recent" | "likes";
 }) {
   const time = formatLocalDateTime(item.date);
   const albumPic = item.track.album?.picture ?? null;
   const userIdent = item.user.username || item.user.id;
   const userDisplay = item.user.name ?? item.user.username ?? "Unknown";
+
+  const { data: me } = useQuery({
+    queryKey: queryKeys.currentUser,
+    queryFn: apiService.getCurrentUser,
+    staleTime: 30_000,
+  });
+  const isPremium = Boolean(me?.user?.subscribed);
+
+  const publishPlayed = (resp: PlayResponse) => {
+    const t = resp.track;
+    if (!t) return;
+    emit("played", {
+      id: t.id,
+      name: t.name,
+      artists: t.artists,
+      albumImage: t.album_image,
+      durationMs: t.duration_ms,
+    });
+  };
+
+  const onPlayClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const doPlay = async () =>
+      apiService.playTrack({
+        trackId: item.track.id,
+        context: {
+          source,
+          user: { id: item.user.id, username: item.user.username },
+          context_uri: item.context_uri ?? null,
+        },
+      });
+
+    try {
+      const resp = await doPlay();
+      publishPlayed(resp);
+    } catch (err) {
+      const msg = (err as Error)?.message || "Failed to start playback";
+      const noDevice = /no active device/i.test(msg);
+      if (!noDevice || !isPremium) {
+        alert(msg);
+        return;
+      }
+      try {
+        // Create browser device and transfer playback
+        const deviceId = await ensureWebPlaybackDevice();
+        await apiService.transferPlayback(deviceId, true);
+        const resp = await doPlay();
+        publishPlayed(resp);
+        setTimeout(() => {}, 300);
+      } catch (e2) {
+        alert((e2 as Error)?.message || "Cannot start web playback");
+      }
+    }
+  };
+
   return (
     <li className="recent-item" data-testid="recent-item">
       <div className="recent-left">
-        {albumPic ? (
-          <img
-            className="recent-avatar"
-            src={albumPic}
-            alt={""}
-            title={item.track.album?.name ?? ""}
-          />
-        ) : (
-          <div className="recent-avatar placeholder">🎵</div>
-        )}
+        <div className="recent-avatar-wrap">
+          {albumPic ? (
+            <img
+              className="recent-avatar"
+              src={albumPic}
+              alt={""}
+              title={item.track.album?.name ?? ""}
+            />
+          ) : (
+            <div className="recent-avatar placeholder">🎵</div>
+          )}
+          <button
+            className="play-overlay"
+            aria-label="Play"
+            onClick={onPlayClick}
+          >
+            ▶
+          </button>
+        </div>
       </div>
       <div className="recent-main">
         <div className="recent-track">
@@ -154,6 +223,7 @@ export function RecentActivityWidget({
               item={it}
               showIgnore={false}
               userLinkBase="/recent"
+              source="recent"
             />
           ))}
       </ul>

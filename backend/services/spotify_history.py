@@ -134,8 +134,10 @@ async def fill_missing_track(session: Session, user: User):
     missing_tracks = find_missing_tracks(session)
     if missing_tracks:
         logger.info(f"Querying Spotify for {len(missing_tracks)} missing tracks")
-        spotify = Spotify(db_session=session)
-        async for track in spotify.yield_tracks(user=user, tracks=missing_tracks):
+        spotify = Spotify()
+        async for track in spotify.yield_tracks(
+            user=user, db_session=session, tracks=missing_tracks
+        ):
             store_track(track, session)
     session.commit()
     logger.info("Finished filling the track gaps from Spotify")

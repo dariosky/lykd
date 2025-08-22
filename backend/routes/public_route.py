@@ -524,3 +524,8 @@ async def get_public_profile(
             "most_played_decade": most_played_decade,
         },
     }
+
+
+@router.get("/get/next")
+async def get_next_stub():
+    return {"next": None}

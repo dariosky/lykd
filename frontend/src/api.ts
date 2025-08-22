@@ -13,6 +13,7 @@ export interface User {
   picture: string;
   join_date: string;
   is_admin: boolean;
+  subscribed?: boolean; // Premium flag
 }
 
 export interface UserResponse {
@@ -64,6 +65,29 @@ export interface SpotifyStats {
   active: boolean;
   full_history_sync_wait: number; // seconds to wait before extended import is available
   last_full_history_sync: string | null; // ISO string when user last ran full history import
+}
+
+// Playback
+export interface PlayTrackParams {
+  trackId: string;
+  context?: Record<string, unknown>;
+}
+
+export interface PlayedTrackDetails {
+  id: string;
+  name: string;
+  artists: string[];
+  album_image: string | null;
+  duration_ms: number;
+}
+
+export interface PlayResponse {
+  status: string;
+  track?: PlayedTrackDetails | null;
+}
+
+export interface NextResponse {
+  next: null | { track_id: string; uri?: string };
 }
 
 // Friendship
@@ -173,6 +197,35 @@ export class NotFoundError extends Error {
   }
 }
 
+const getErrorMessage = async (response: Response): Promise<string> => {
+  let text: string;
+  try {
+    text = await response.text();
+  } catch {
+    return `${response.status} ${response.statusText}`;
+  }
+  if (!text) return `${response.status} ${response.statusText}`;
+  try {
+    const data = JSON.parse(text);
+    if (data && typeof data === "object" && "detail" in data) {
+      const detail = (data as any).detail;
+      if (typeof detail === "string") return detail;
+      if (detail && typeof detail === "object") {
+        if (
+          "message" in detail &&
+          typeof (detail as any).message === "string"
+        ) {
+          return (detail as any).message;
+        }
+        try {
+          return JSON.stringify(detail);
+        } catch {}
+      }
+    }
+  } catch {}
+  return text;
+};
+
 export const apiService = {
   // Fetch backend status with 5-second stale time
   getBackendStatus: async (): Promise<ApiStatus> => {
@@ -227,6 +280,79 @@ export const apiService = {
       throw new Error("No authorization URL received from server");
     }
     return data;
+  },
+
+  // Start playback on the user's active Spotify device
+  playTrack: async (params: PlayTrackParams): Promise<PlayResponse> => {
+    const response = await fetch("/api/spotify/play", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        track_id: params.trackId,
+        context: params.context ?? {},
+      }),
+    });
+    if (!response.ok) {
+      throw new Error(await getErrorMessage(response));
+    }
+    return response.json();
+  },
+
+  // Playback state and controls
+  getPlayback: async (): Promise<{ state: any | null }> => {
+    const response = await fetch("/api/spotify/playback", {
+      credentials: "include",
+    });
+    if (response.status === 401) return { state: null };
+    if (!response.ok) throw new Error(await getErrorMessage(response));
+    return response.json();
+  },
+  pausePlayback: async (): Promise<{ status: string }> => {
+    const response = await fetch("/api/spotify/pause", {
+      method: "POST",
+      credentials: "include",
+    });
+    if (!response.ok) throw new Error(await getErrorMessage(response));
+    return response.json();
+  },
+  resumePlayback: async (): Promise<{ status: string }> => {
+    const response = await fetch("/api/spotify/resume", {
+      method: "POST",
+      credentials: "include",
+    });
+    if (!response.ok) throw new Error(await getErrorMessage(response));
+    return response.json();
+  },
+  nextPlayback: async (): Promise<{ status: string }> => {
+    const response = await fetch("/api/spotify/next", {
+      method: "POST",
+      credentials: "include",
+    });
+    if (!response.ok) throw new Error(await getErrorMessage(response));
+    return response.json();
+  },
+
+  // Web Playback SDK helpers
+  getSpotifyToken: async (): Promise<{ access_token: string }> => {
+    const response = await fetch("/api/spotify/token", {
+      credentials: "include",
+    });
+    if (!response.ok) throw new Error(await getErrorMessage(response));
+    return response.json();
+  },
+  transferPlayback: async (
+    deviceId: string,
+    play: boolean = true,
+  ): Promise<{ status: string }> => {
+    const response = await fetch("/api/spotify/transfer", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ device_id: deviceId, play }),
+    });
+    if (!response.ok) throw new Error(await getErrorMessage(response));
+    return response.json();
   },
 
   // Logout user
@@ -508,6 +634,13 @@ export const apiService = {
     if (!response.ok) {
       throw new Error(`Failed to get Spotify stats: ${response.status}`);
     }
+    return response.json();
+  },
+
+  // Get next track (stubbed on backend)
+  getNext: async (): Promise<NextResponse> => {
+    const response = await fetch("/api/get/next", { credentials: "include" });
+    if (!response.ok) throw new Error(await getErrorMessage(response));
     return response.json();
   },
 

@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import Layout from "./Layout";
 import "./ErrorPage.css";
 
 interface ErrorPageProps {
@@ -163,28 +162,26 @@ function ErrorPage({
   };
 
   return (
-    <Layout>
-      <div className="error-page">
-        <div className="error-container">
-          <div className="error-icon">{getErrorIcon(errorType)}</div>
+    <div className="error-page">
+      <div className="error-container">
+        <div className="error-icon">{getErrorIcon(errorType)}</div>
 
-          <div className="error-content">
-            <h1 className="error-title">{errorTitle}</h1>
-            <p className="error-message">{errorMessage}</p>
+        <div className="error-content">
+          <h1 className="error-title">{errorTitle}</h1>
+          <p className="error-message">{errorMessage}</p>
 
-            <div className="error-help">
-              {getHelpText(searchParams.get("type") || errorType)}
-            </div>
+          <div className="error-help">
+            {getHelpText(searchParams.get("type") || errorType)}
+          </div>
 
-            <div className="error-actions">
-              <button onClick={onGoHome} className="home-button">
-                Return to Home
-              </button>
-            </div>
+          <div className="error-actions">
+            <button onClick={onGoHome} className="home-button">
+              Return to Home
+            </button>
           </div>
         </div>
       </div>
-    </Layout>
+    </div>
   );
 }
 

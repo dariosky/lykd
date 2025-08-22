@@ -32,11 +32,6 @@
   }
 }
 
-.dashboard-header {
-  max-width: 1200px;
-  margin: 0 auto 2rem;
-}
-
 .welcome-message h1 {
   font-size: 2.5rem;
   font-weight: 700;
@@ -161,10 +156,6 @@
 @media (max-width: 768px) {
   .dashboard {
     padding: 1rem;
-  }
-
-  .dashboard-header {
-    margin-bottom: 2rem;
   }
 
   .welcome-message h1 {

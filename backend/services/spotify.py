@@ -2,129 +2,33 @@
 
 import logging
 import secrets
-from functools import partial
 from typing import Any, AsyncGenerator
 from urllib.parse import urlencode
 
 import httpx
+from sqlmodel import Session
+
 import settings
-from fastapi import HTTPException
 from models.auth import User
-from services.slack import slack
-from tenacity import (
-    Future,
-    before_sleep_log,
-    retry,
-    stop_after_attempt,
-    wait_random,
-)
-from tenacity.wait import wait_base
-from utils import humanize_milliseconds
+
+from services.spotify_retry import exception_from_response, spotify_retry
 from utils.cache import disk_cache
 from utils.chunks import reverse_block_chunks
-from utils.logs import ratelimited_log
+from fastapi import Request
 
 logger = logging.getLogger("lykd.spotify")
-
-
-def exception_from_response(response: httpx.Response, prefix=None) -> HTTPException:
-    """Create an HTTPException from a httpx response"""
-    return HTTPException(
-        status_code=response.status_code,
-        detail=f"{prefix}: {response.text}" if prefix else response.text,
-        headers=response.headers,
-    )
-
-
-class wait_retry_after_or_default(wait_base):
-    def __init__(self, default_wait):
-        self.default_wait = default_wait
-
-    def __call__(self, retry_state):
-        ex = retry_state.outcome.exception()
-        if isinstance(ex, HTTPException):
-            retry_after = getattr(ex, "headers", {}).get("Retry-After")
-            if retry_after is not None:
-                try:
-                    wait_seconds = max(0, int(retry_after))
-                    ratelimited_log(60 * 60)(
-                        slack.send_message, "⚠️ Rate-limited by Spotify"
-                    )
-                    logger.debug(
-                        f"Rate-limited, retry after {humanize_milliseconds(wait_seconds * 1000)} seconds"
-                    )
-                    return wait_seconds
-                except ValueError:
-                    pass
-        return self.default_wait(retry_state)
-
-
-async def renew_token_if_expired(retry_state):
-    """Renew token if the retry is due to an expired token"""
-    if retry_state.outcome.failed:
-        exception = retry_state.outcome.exception()
-        if isinstance(exception, HTTPException):
-            if "user" in retry_state.kwargs:
-                user: User = retry_state.kwargs[
-                    "user"
-                ]  # we need a user to renew the token
-                spotify: Spotify = retry_state.args[0]
-                if (
-                    exception.status_code == 401
-                    and "access token expired" in exception.detail
-                ):
-                    updated_tokens = await spotify.refresh_token(user=user)
-                    user.tokens = {
-                        **(user.tokens or {}),
-                        **updated_tokens,
-                    }
-                    if spotify.db_session:
-                        logger.debug(f"Refreshed the user {user.email} tokens")
-                        spotify.db_session.add(user)
-                        spotify.db_session.commit()
-                    return  # token refreshed - let's retry
-                elif (
-                    exception.status_code == 400
-                    and "Refresh token revoked" in exception.detail
-                ):
-                    logger.warning("User is gone, marking as inactive")
-                    slack.send_message(f"🛑User is gone: {user.email}")
-                    user.tokens = None
-                    if spotify.db_session:
-                        logger.debug(f"Refreshed the user {user.email} tokens")
-                        spotify.db_session.add(user)
-                        spotify.db_session.commit()
-                    fut = Future(attempt_number=retry_state.attempt_number)
-                    fut.set_result(None)
-                    retry_state.outcome = fut  # replace the finished future
-                    raise exception
-            if 400 <= exception.status_code < 500 and exception.status_code != 429:
-                # don't retry on 4xx errors but 429
-                raise exception
-
-
-spotify_retry = partial(
-    retry,
-    before_sleep=before_sleep_log(logger, logging.WARNING),
-    wait=wait_retry_after_or_default(
-        default_wait=wait_random(0, 0 if settings.TESTING_MODE else 0.5)
-    ),
-    stop=stop_after_attempt(2),
-    reraise=True,
-    after=renew_token_if_expired,
-)
 
 
 class Spotify:
     """Handle Spotify OAuth flow and API calls"""
 
-    def __init__(self, db_session=None):
-        self.db_session = db_session
+    def __init__(self):
         self.client_id = settings.SPOTIFY_CLIENT_ID
         self.client_secret = settings.SPOTIFY_CLIENT_SECRET
         self.redirect_uri = f"{settings.API_URL}/spotify/callback"
         self.scopes = [
             "user-read-email",
+            "user-read-private",  # to check if user is premium
             "user-library-read",
             "user-library-modify",
             "playlist-read-private",
@@ -132,7 +36,11 @@ class Spotify:
             "playlist-modify-private",
             "user-read-recently-played",
             "user-top-read",
-            "user-read-private",  # to check if user is premium
+            # Playback control scopes
+            "user-modify-playback-state",
+            "user-read-playback-state",
+            "user-read-currently-playing",
+            "streaming",  # required for Web Playback SDK
         ]
 
         if not self.client_id or not self.client_secret:
@@ -230,7 +138,12 @@ class Spotify:
     )
     @spotify_retry()
     async def get_page(
-        self, *, url: str, user: "User", params: dict[str, Any] | None = None
+        self,
+        *,
+        url: str,
+        user: "User",
+        db_session: Session,
+        params: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Get a page given an endpoint in the Spotify API"""
         response = await self.client.get(
@@ -243,33 +156,53 @@ class Spotify:
         return response.json()
 
     async def get_liked_page(
-        self, *, user: "User", next_page: str | None = None, limit: int = 50
+        self,
+        *,
+        user: "User",
+        db_session: Session,
+        next_page: str | None = None,
+        limit: int = 50,
     ) -> dict[str, Any]:
         url = next_page or "https://api.spotify.com/v1/me/tracks"
         logger.debug(f"Fetching liked page for {user} - {url}")
         return await self.get_page(
             url=url,
             user=user,
+            db_session=db_session,
             params={"limit": limit} if not next_page else None,
         )
 
     async def get_recently_played_page(
-        self, *, user: "User", next_page: str | None = None, limit: int = 50
+        self,
+        *,
+        user: "User",
+        db_session: Session,
+        next_page: str | None = None,
+        limit: int = 50,
     ) -> dict[str, Any]:
         url = next_page or "https://api.spotify.com/v1/me/player/recently-played"
         logger.debug(f"Fetching recent page for {user} - {url}")
         return await self.get_page(
-            url=url, user=user, params={"limit": limit} if not next_page else None
+            url=url,
+            user=user,
+            db_session=db_session,
+            params={"limit": limit} if not next_page else None,
         )
 
     async def get_playlists_page(
-        self, *, user: "User", next_page: str | None = None, limit: int = 50
+        self,
+        *,
+        user: "User",
+        db_session: Session,
+        next_page: str | None = None,
+        limit: int = 50,
     ) -> dict[str, Any]:
         url = next_page or "https://api.spotify.com/v1/me/playlists"
         logger.debug(f"Fetching user playlists for {user}: {url}")
         return await self.get_page(
             url=url,
             user=user,
+            db_session=db_session,
             params={"limit": limit} if not next_page else None,
         )
 
@@ -278,6 +211,7 @@ class Spotify:
         *,
         playlist_id,
         user: "User",
+        db_session: Session,
         next_page: str | None = None,
         limit: int = 50,
     ):
@@ -286,16 +220,21 @@ class Spotify:
         return await self.get_page(
             url=url,
             user=user,
+            db_session=db_session,
             params={"limit": limit} if not next_page else None,
         )
 
     @staticmethod
-    async def get_all(*, user: User, request, limit=50) -> list[dict[str, Any]]:
+    async def get_all(
+        *, user: User, request, db_session: Session, limit=50
+    ) -> list[dict[str, Any]]:
         """Get all liked songs for a user by iterating through all pages"""
         items = []
         next_page = None
         while True:
-            response = await request(user=user, limit=limit, next_page=next_page)
+            response = await request(
+                user=user, db_session=db_session, limit=limit, next_page=next_page
+            )
             page = response.get("items", [])
 
             if not page:
@@ -311,11 +250,13 @@ class Spotify:
         return items
 
     @staticmethod
-    async def yield_from(*, user: User, request, limit=50):
+    async def yield_from(*, user: User, db_session: Session, request, limit=50):
         """Yield results from a paginated list of requests"""
         next_page = None
         while True:
-            response = await request(user=user, limit=limit, next_page=next_page)
+            response = await request(
+                user=user, db_session=db_session, limit=limit, next_page=next_page
+            )
             page = response.get("items", [])
 
             if not page:
@@ -329,8 +270,10 @@ class Spotify:
                 break
 
     @spotify_retry()
-    async def get_or_create_playlist(self, user: User, playlist_name: str):
-        playlists = await self.get_all_playlists(user)
+    async def get_or_create_playlist(
+        self, user: User, db_session: Session, playlist_name: str
+    ):
+        playlists = await self.get_all_playlists(user=user, db_session=db_session)
         same_name_playlists = [
             p
             for p in playlists
@@ -354,12 +297,19 @@ class Spotify:
 
         return playlist
 
-    async def get_all_playlists(self, user: User):
-        return await self.get_all(user=user, request=self.get_playlists_page)
+    async def get_all_playlists(self, user: User, db_session: Session):
+        return await self.get_all(
+            user=user, db_session=db_session, request=self.get_playlists_page
+        )
 
     @spotify_retry()
     async def playlist_create(
-        self, user: User, description: str | None, name: str, public: bool
+        self,
+        user: User,
+        db_session: Session,
+        description: str | None,
+        name: str,
+        public: bool,
     ):
         logger.info(f"Creating playlist {name} for {user}")
         params = {"name": name, "description": description, public: public}
@@ -375,7 +325,10 @@ class Spotify:
 
         return response.json()
 
-    async def delete_playlist(self, user, playlist_id: str) -> None:
+    @spotify_retry()
+    async def delete_playlist(
+        self, user: User, db_session: Session, playlist_id: str
+    ) -> None:
         logger.info(f"Deleting playlist {playlist_id} for {user}")
         url = f"https://api.spotify.com/v1/playlists/{playlist_id}/followers"
         response = await self.client.delete(
@@ -392,6 +345,7 @@ class Spotify:
     async def change_playlist(
         self,
         user: User,
+        db_session: Session,
         playlist_id: str,
         tracks_to_add: list[str] | None = None,
         tracks_to_remove: set[str] | None = None,
@@ -447,17 +401,104 @@ class Spotify:
                         add_response, f"Add tracks to {url} failed"
                     )
 
-    async def yield_tracks(self, user: User, tracks: set) -> AsyncGenerator[dict]:
+    async def yield_tracks(
+        self, user: User, db_session: Session, tracks: set
+    ) -> AsyncGenerator[dict]:
         """yield tracks from a set of track IDs"""
         for chunk in reverse_block_chunks(tracks, 50):
             resp = await self.get_page(
                 url="https://api.spotify.com/v1/tracks",
                 user=user,
+                db_session=db_session,
                 params={"ids": ",".join(chunk)},
             )
             tracks = resp.get("tracks", [])
             for track_data in tracks:
                 yield track_data
+
+    @spotify_retry()
+    async def play(
+        self,
+        *,
+        user: User,
+        db_session: Session,
+        uris: list[str] | None = None,
+        position_ms: int | None = None,
+    ):
+        """Start/resume playback on the user's active device.
+        If uris is provided, start playing those tracks immediately.
+        """
+        url = "https://api.spotify.com/v1/me/player/play"
+        payload: dict[str, Any] = {}
+        if uris:
+            payload["uris"] = [get_uri(u) if ":" not in u else u for u in uris]
+        if position_ms is not None:
+            payload["position_ms"] = position_ms
+        headers = {**self.get_headers(user), "Content-Type": "application/json"}
+        response = await self.client.put(url, headers=headers, json=payload or None)
+        if response.status_code not in (200, 202, 204):
+            raise exception_from_response(response, f"PUT {url} failed")
+        return None
+
+    @spotify_retry()
+    async def pause(self, *, user: User, db_session: Session) -> None:
+        url = "https://api.spotify.com/v1/me/player/pause"
+        response = await self.client.put(url, headers=self.get_headers(user))
+        if response.status_code not in (200, 202, 204):
+            raise exception_from_response(response, f"PUT {url} failed")
+        return None
+
+    @spotify_retry()
+    async def next(self, *, user: User, db_session: Session) -> None:
+        url = "https://api.spotify.com/v1/me/player/next"
+        response = await self.client.post(url, headers=self.get_headers(user))
+        if response.status_code not in (200, 202, 204):
+            raise exception_from_response(response, f"POST {url} failed")
+        return None
+
+    @spotify_retry()
+    async def transfer_playback(
+        self, *, user: User, db_session: Session, device_id: str, play: bool = True
+    ) -> None:
+        url = "https://api.spotify.com/v1/me/player"
+        payload = {"device_ids": [device_id], "play": play}
+        response = await self.client.put(
+            url,
+            headers={**self.get_headers(user), "Content-Type": "application/json"},
+            json=payload,
+        )
+        if response.status_code not in (200, 202, 204):
+            raise exception_from_response(response, f"PUT {url} failed")
+        return None
+
+    @spotify_retry()
+    async def get_playback_state(
+        self, *, user: User, db_session: Session
+    ) -> dict | None:
+        """Return playback state or None if nothing is playing/no active device."""
+        url = "https://api.spotify.com/v1/me/player"
+        response = await self.client.get(url, headers=self.get_headers(user))
+        if response.status_code == 200:
+            return response.json()
+        if response.status_code in (202, 204, 404):
+            # 404 can be returned when no active device
+            return None
+        raise exception_from_response(response, f"GET {url} failed")
+
+    @spotify_retry()
+    async def get_track(
+        self, *, user: User, db_session: Session, track_id: str
+    ) -> dict:
+        url = f"https://api.spotify.com/v1/tracks/{track_id}"
+        response = await self.client.get(url, headers=self.get_headers(user))
+        if response.status_code != 200:
+            raise exception_from_response(response, f"GET {url} failed")
+        return response.json()
+
+
+def get_spotify_client(request: Request) -> Spotify:
+    spotify = request.app.state.spotify
+    return spotify
 
 
 def get_uri(track_id: str, track_type: str = "track"):
