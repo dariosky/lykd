@@ -88,3 +88,23 @@
     grid-template-columns: 1fr;
   }
 }
+
+[title] {
+  position: relative;
+}
+
+[title]:after {
+  content: attr(title);
+  font-size: 0.7rem;
+  position: absolute;
+  right: 0;
+  top: 150%; /* put it on the top */
+  background-color: black;
+  width: max-content;
+  opacity: 0;
+  -webkit-transition: opacity 0.75s ease-in-out;
+}
+
+[title]:hover:after {
+  opacity: 1;
+}

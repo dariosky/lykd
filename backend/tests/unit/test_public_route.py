@@ -199,13 +199,14 @@ class TestPublicRouteEndpoints:
         top_tracks_30 = data["highlights"]["top_songs_30_days"]
 
         assert len(top_tracks_30) == 1
-        assert top_tracks_30[0]["track_id"] == track.id
-        assert top_tracks_30[0]["title"] == track.title
-        assert top_tracks_30[0]["duration"] == track.duration
+        track_data = top_tracks_30[0]["track"]
+        assert track_data["id"] == track.id
+        assert track_data["title"] == track.title
+        assert track_data["duration"] == track.duration
+        assert track_data["artists"] == [artist.name]
+        assert track_data["album"]["id"] == album.id
+        assert track_data["album"]["name"] == album.name
         assert top_tracks_30[0]["play_count"] == 3
-        assert top_tracks_30[0]["artists"] == [artist.name]
-        assert top_tracks_30[0]["album"]["id"] == album.id
-        assert top_tracks_30[0]["album"]["name"] == album.name
 
     def test_get_public_profile_top_artists(self, client, test_session):
         """Test top artists functionality."""

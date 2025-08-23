@@ -1,5 +1,6 @@
 """Spotify API integration"""
 
+import datetime
 import logging
 import secrets
 from typing import Any, AsyncGenerator
@@ -498,6 +499,40 @@ class Spotify:
         if response.status_code != 200:
             raise exception_from_response(response, f"GET {url} failed")
         return response.json()
+
+    @spotify_retry()
+    async def set_liked_track(
+        self,
+        *,
+        user: User,
+        db_session: Session,
+        track_id: str,
+        liked: bool,
+        liked_at: datetime.datetime | None = None,
+    ) -> None:
+        """Save or remove a track from the user's likes."""
+        url = "https://api.spotify.com/v1/me/tracks"
+        headers = self.get_headers(user)
+        if liked:
+            params = {"ids": [track_id]}
+            if liked_at:
+                params["timestamped_ids"] = [
+                    {
+                        "id": track_id,
+                        "added_at": liked_at.isoformat(),
+                    }
+                ]
+
+            response = await self.client.put(url, headers=headers, params=params)
+            if response.status_code not in (200, 201, 204):
+                raise exception_from_response(response, f"PUT {url} failed")
+        else:
+            response = await self.client.delete(
+                url, headers=headers, params={"ids": [track_id]}
+            )
+            if response.status_code not in (200, 201, 204):
+                raise exception_from_response(response, f"DELETE {url} failed")
+        return None
 
 
 def get_spotify_client(request: Request) -> Spotify:

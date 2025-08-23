@@ -1,4 +1,4 @@
-from typing import Any, Sequence
+import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.sql import and_, exists, or_
@@ -20,6 +20,8 @@ from models.music import (
 )
 from routes.deps import current_user, parse_ui_date, date_range_for_token
 from routes.friendship import get_friends
+from services.cache import cache
+from services.spotify import get_spotify_client, Spotify
 
 router = APIRouter()
 
@@ -157,86 +159,11 @@ def get_page(
 
     if not items:
         return {"items": [], "next_before": None}
+    else:
+        results = cache.enrich_tracks(items, field, current_user, session)
 
-    # Gather related entities in bulk
-    track_ids = {p.track_id for p in items}
-
-    users_map: dict[str, User] = {
-        current_user.id: current_user,
-        **{u.id: u for u in friends},
-    }
-
-    tracks: Sequence[Track] = session.exec(
-        select(Track).where(Track.id.in_(track_ids))
-    ).all()
-    tracks_map: dict[str, Track] = {t.id: t for t in tracks}
-
-    # Album info
-    album_ids = {t.album_id for t in tracks if t.album_id}
-    albums_map: dict[str, Album] = {
-        a.id: a
-        for a in session.exec(select(Album).where(Album.id.in_(album_ids))).all()
-    }
-
-    # Artists per track
-    ta_rows = session.exec(
-        select(TrackArtist).where(TrackArtist.track_id.in_(track_ids))
-    ).all()
-    artist_ids = list({ta.artist_id for ta in ta_rows})
-    artists_map: dict[str, Artist] = {
-        a.id: a
-        for a in session.exec(select(Artist).where(Artist.id.in_(artist_ids))).all()
-    }
-    track_artists: dict[str, list[str]] = {}
-    for ta in ta_rows:
-        track_artists.setdefault(ta.track_id, []).append(
-            artists_map.get(ta.artist_id).name
-            if artists_map.get(ta.artist_id)
-            else None
-        )
-    # Clean None
-    for k, v in list(track_artists.items()):
-        track_artists[k] = [x for x in v if x]
-
-    # Build items
-    results: list[dict[str, Any]] = []
-    for p in items:
-        u = users_map.get(p.user_id)
-        t = tracks_map.get(p.track_id)
-        album = albums_map.get(t.album_id) if (t and t.album_id) else None
-        results.append(
-            {
-                "user": {
-                    "id": u.id if u else p.user_id,
-                    "name": u.name if u else None,
-                    "username": u.username if u else None,
-                    "picture": u.picture if u else None,
-                },
-                "track": {
-                    "id": t.id if t else p.track_id,
-                    "title": t.title if t else None,
-                    "duration": t.duration if t else None,
-                    "album": (
-                        {
-                            "id": album.id,
-                            "name": album.name,
-                            "picture": album.picture,
-                            "release_date": album.release_date.isoformat()
-                            if album and album.release_date
-                            else None,
-                        }
-                        if album
-                        else None
-                    ),
-                    "artists": track_artists.get(p.track_id, []),
-                },
-                field: getattr(p, field).isoformat(),
-                "context_uri": getattr(p, "context_uri", None),
-            }
-        )
-
-    next_before = getattr(items[-1], field) if len(items) == limit else None
-    return {"items": results, "next_before": next_before}
+        next_before = getattr(items[-1], field) if len(items) == limit else None
+        return {"items": results, "next_before": next_before}
 
 
 @router.get("/recent")
@@ -288,3 +215,45 @@ async def user_likes(
         q=q,
         show_ignored=show_ignored,
     )
+
+
+@router.post("/like")
+async def toggle_like(
+    payload: dict,
+    session: Session = Depends(get_session),
+    current_user: User | None = Depends(current_user),
+    spotify: Spotify = Depends(get_spotify_client),
+):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    track_id = payload.get("track_id")
+    liked = payload.get("liked")
+    if not isinstance(track_id, str) or not isinstance(liked, bool):
+        raise HTTPException(status_code=400, detail="Invalid payload")
+
+    existing_like = session.get(Like, (current_user.id, track_id))
+    now = datetime.datetime.now(datetime.timezone.utc)
+    if liked:
+        if not existing_like:
+            session.add(Like(user_id=current_user.id, track_id=track_id, date=now))
+            session.commit()
+            if current_user.id in cache.likes_cache:  # manually update the cache
+                cache.likes_cache[current_user.id].add(track_id)
+        await spotify.set_liked_track(
+            user=current_user,
+            db_session=session,
+            track_id=track_id,
+            liked=True,
+            liked_at=now,
+        )
+        return {"status": "ok", "liked": True}
+    else:
+        if existing_like:
+            session.delete(existing_like)
+            session.commit()
+            if current_user.id in cache.likes_cache:  # manually update the cache
+                cache.likes_cache[current_user.id].remove(track_id)
+        await spotify.set_liked_track(
+            user=current_user, db_session=session, track_id=track_id, liked=False
+        )
+        return {"status": "ok", "liked": False}

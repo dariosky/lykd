@@ -51,8 +51,8 @@ export interface PublicProfileResponse {
     tracking_since?: string | null;
   };
   highlights: {
-    top_songs_30_days: PublicTrackItem[];
-    top_songs_all_time: PublicTrackItem[];
+    top_songs_30_days: RecentItem[]; // now same shape as recents
+    top_songs_all_time: RecentItem[]; // now same shape as recents
     top_artists: PublicArtistItem[];
     most_played_decade: string | null;
   };
@@ -180,6 +180,7 @@ export interface RecentItem {
   track: RecentTrack;
   date: string;
   context_uri?: string | null;
+  liked?: boolean; // whether current user liked this track
 }
 
 export interface RecentResponse {
@@ -622,6 +623,23 @@ export const apiService = {
     if (!response.ok) {
       const text = await response.text();
       throw new Error(`Failed to get likes: ${response.status} ${text}`);
+    }
+    return response.json();
+  },
+
+  // Toggle like for a track
+  setLike: async (
+    trackId: string,
+    liked: boolean,
+  ): Promise<{ status: string; liked: boolean }> => {
+    const response = await fetch(`/api/like`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ track_id: trackId, liked }),
+    });
+    if (!response.ok) {
+      throw new Error(await getErrorMessage(response));
     }
     return response.json();
   },

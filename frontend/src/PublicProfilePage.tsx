@@ -11,6 +11,7 @@ import {
 import { IgnoreTrackButton, IgnoreArtistButton } from "./IgnoreButtons";
 import "./PublicProfile.css";
 import { formatLocalDate } from "./date";
+import { RecentPlayItem } from "./RecentActivity";
 
 function formatDurationDHMS(totalSec: number): string {
   const days = Math.floor(totalSec / 86400);
@@ -296,19 +297,21 @@ export default function PublicProfilePage() {
               <div className="highlight">
                 <div className="highlight-title">📆 Top songs (30 days)</div>
                 <ul className="list">
-                  {(data?.highlights?.top_songs_30_days ?? []).map((t) => (
-                    <li key={`30-${t.track_id}`} className="list-item">
-                      <div className="list-main">
-                        <div className="list-title">🎵 {t.title}</div>
-                        <div className="list-sub">
-                          {t.artists.join(", ")}
-                          {t.album?.name ? ` • ${t.album.name}` : ""}
-                        </div>
+                  {(data?.highlights?.top_songs_30_days ?? []).map((it) => (
+                    <li
+                      key={`${it.user.id}-${it.track.id}-${it.date}`}
+                      className="list-item"
+                    >
+                      <div className="list-main track-cell">
+                        <RecentPlayItem
+                          item={it}
+                          userLinkBase="/likes"
+                          source="profile"
+                        />
                       </div>
                       <div className="list-meta">
-                        ▶️ {formatNumber(t.play_count)} plays
                         <IgnoreTrackButton
-                          trackId={t.track_id}
+                          trackId={it.track.id}
                           className="profile-ignore-btn"
                         />
                       </div>
@@ -322,19 +325,21 @@ export default function PublicProfilePage() {
               <div className="highlight">
                 <div className="highlight-title">🏆 Top songs (all time)</div>
                 <ul className="list">
-                  {(data?.highlights?.top_songs_all_time ?? []).map((t) => (
-                    <li key={`all-${t.track_id}`} className="list-item">
-                      <div className="list-main">
-                        <div className="list-title">🎵 {t.title}</div>
-                        <div className="list-sub">
-                          {t.artists.join(", ")}
-                          {t.album?.name ? ` • ${t.album.name}` : ""}
-                        </div>
+                  {(data?.highlights?.top_songs_all_time ?? []).map((it) => (
+                    <li
+                      key={`${it.user.id}-${it.track.id}-${it.date}`}
+                      className="list-item"
+                    >
+                      <div className="list-main track-cell">
+                        <RecentPlayItem
+                          item={it}
+                          userLinkBase="/likes"
+                          source="profile"
+                        />
                       </div>
                       <div className="list-meta">
-                        ▶️ {formatNumber(t.play_count)} plays
                         <IgnoreTrackButton
-                          trackId={t.track_id}
+                          trackId={it.track.id}
                           className="profile-ignore-btn"
                         />
                       </div>

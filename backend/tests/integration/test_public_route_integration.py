@@ -85,11 +85,11 @@ class TestPublicRouteIntegration:
         # Top tracks should only include non-ignored
         top_tracks_30 = data["highlights"]["top_songs_30_days"]
         assert len(top_tracks_30) == 1
-        assert top_tracks_30[0]["track_id"] == track1.id
+        assert top_tracks_30[0]["track"]["id"] == track1.id
 
         top_tracks_all = data["highlights"]["top_songs_all_time"]
         assert len(top_tracks_all) == 1
-        assert top_tracks_all[0]["track_id"] == track1.id
+        assert top_tracks_all[0]["track"]["id"] == track1.id
 
     def test_public_profile_with_ignored_artists(self, client, test_session):
         """Test that tracks by ignored artists are excluded."""
@@ -231,8 +231,8 @@ class TestPublicRouteIntegration:
         top_tracks = data["highlights"]["top_songs_all_time"]
         assert len(top_tracks) == 1
         track_data = top_tracks[0]
-        assert len(track_data["artists"]) == 3
-        artist_names = set(track_data["artists"])
+        assert len(track_data["track"]["artists"]) == 3
+        artist_names = set(track_data["track"]["artists"])
         assert artist_names == {"Artist One", "Artist Two", "Artist Three"}
 
     def test_public_profile_comprehensive_stats(self, client, test_session):
@@ -327,14 +327,14 @@ class TestPublicRouteIntegration:
 
         # 30-day top tracks should only show recent track
         assert len(highlights["top_songs_30_days"]) == 1
-        assert highlights["top_songs_30_days"][0]["track_id"] == track_new.id
+        assert highlights["top_songs_30_days"][0]["track"]["id"] == track_new.id
         assert highlights["top_songs_30_days"][0]["play_count"] == 3
 
         # All-time top tracks should show old track first (more plays)
         assert len(highlights["top_songs_all_time"]) == 2
-        assert highlights["top_songs_all_time"][0]["track_id"] == track_old.id
+        assert highlights["top_songs_all_time"][0]["track"]["id"] == track_old.id
         assert highlights["top_songs_all_time"][0]["play_count"] == 5
-        assert highlights["top_songs_all_time"][1]["track_id"] == track_new.id
+        assert highlights["top_songs_all_time"][1]["track"]["id"] == track_new.id
         assert highlights["top_songs_all_time"][1]["play_count"] == 3
 
         # Most played decade should be 1980s

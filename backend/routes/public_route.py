@@ -20,6 +20,7 @@ from models.music import (
 )
 from models.common import get_session
 from routes.deps import get_current_user
+from services.cache import cache
 
 router = APIRouter()
 
@@ -475,10 +476,15 @@ async def get_public_profile(
     if rows_30:
         track_ids_30 = [tid for (tid, _) in rows_30]
         cnt_map_30 = {tid: int(cnt) for (tid, cnt) in rows_30}
-        hydrated_30 = _hydrate_tracks(track_ids_30)
+        hydrated_30 = cache.enrich_tracks(
+            [Like(track_id=track_id, user_id=user.id) for track_id in track_ids_30],
+            "date",
+            viewer,
+            db,
+        )
         # enrich with play_count, preserving order
         for item in hydrated_30:
-            item["play_count"] = cnt_map_30.get(item["track_id"], 0)
+            item["play_count"] = cnt_map_30.get(item["track"]["id"], 0)
         top_tracks_30 = hydrated_30
 
     # Top 5 songs all time (use query builder)
@@ -488,9 +494,14 @@ async def get_public_profile(
     if rows_all:
         track_ids_all = [tid for (tid, _) in rows_all]
         cnt_map_all = {tid: int(cnt) for (tid, cnt) in rows_all}
-        hydrated_all = _hydrate_tracks(track_ids_all)
+        hydrated_all = cache.enrich_tracks(
+            [Like(track_id=track_id, user_id=user.id) for track_id in track_ids_all],
+            "date",
+            viewer,
+            db,
+        )
         for item in hydrated_all:
-            item["play_count"] = cnt_map_all.get(item["track_id"], 0)
+            item["play_count"] = cnt_map_all.get(item["track"]["id"], 0)
         top_tracks_all = hydrated_all
 
     # Top 5 artists by play count

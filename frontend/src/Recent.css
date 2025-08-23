@@ -25,12 +25,6 @@
   text-decoration-color: rgba(255, 255, 255, 0.7);
 }
 
-.recent-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
 .recent-list {
   list-style: none;
   margin: 0;
@@ -51,29 +45,9 @@
   min-width: 0;
 }
 
-.recent-item:hover .recent-actions {
-  opacity: 1;
-}
-
-/* On touch devices, always show actions for accessibility */
-@media (hover: none), (pointer: coarse) {
-  .recent-actions {
-    opacity: 1;
-  }
-}
-
-.recent-actions {
-  flex-shrink: 0;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.recent-ignore-btn {
-  opacity: 0.6;
-}
-
-.recent-ignore-btn:hover {
-  opacity: 1;
+/* Ensure the like button is right-aligned */
+.recent-like-btn {
+  margin-left: auto;
 }
 
 .recent-item:last-child {
@@ -393,4 +367,38 @@
   color: #fff;
   font-size: 0.8rem;
   font-weight: 700;
+}
+
+/* Like button: large, no background; hidden by default except liked/hover/focus */
+.recent-like-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 2px;
+  cursor: pointer;
+  line-height: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition:
+    opacity 0.2s ease,
+    transform 0.1s ease;
+}
+.recent-item:hover .recent-like-btn,
+.recent-like-btn:focus,
+.recent-like-btn:focus-visible {
+  opacity: 1;
+}
+.recent-like-btn.liked {
+  opacity: 1; /* always visible if liked */
+}
+.recent-like-btn:active {
+  transform: scale(0.95);
+}
+
+/* Size the inline SVG heart */
+.recent-like-btn svg {
+  width: 28px;
+  height: 28px;
 }

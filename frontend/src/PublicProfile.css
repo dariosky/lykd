@@ -101,6 +101,7 @@
   gap: 0.5rem;
   color: #bbb;
   font-size: 0.85rem;
+  white-space: nowrap; /* Keep right meta on a single line */
 }
 
 .list-empty {
@@ -235,5 +236,35 @@
   .stat-grid,
   .highlights-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Fixed-width cell for embedded RecentPlayItem on profile lists */
+.track-cell {
+  flex: 1 1 720px; /* allow shrinking; prefer ~720px */
+  max-width: 100%; /* don’t overflow on smaller screens */
+  min-width: 0; /* allow inner flex children to shrink */
+}
+
+/* Remove inner borders/padding from embedded recent item to avoid double lines */
+.track-cell .recent-item {
+  border-bottom: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+@media (max-width: 1100px) {
+  .track-cell {
+    flex-basis: 600px;
+  }
+}
+@media (max-width: 900px) {
+  .track-cell {
+    flex-basis: 520px;
+  }
+}
+@media (max-width: 700px) {
+  .track-cell {
+    flex-basis: 100%;
   }
 }

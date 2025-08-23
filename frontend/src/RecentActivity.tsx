@@ -1,7 +1,6 @@
 import React from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { apiService, queryKeys, RecentItem, PlayResponse } from "./api";
-import { IgnoreTrackButton } from "./IgnoreButtons";
 import "./Recent.css";
 import { formatLocalDateTime } from "./date";
 import { Link } from "react-router-dom";
@@ -28,14 +27,12 @@ export function useLocalStorageBoolean(key: string, initial: boolean) {
 
 export function RecentPlayItem({
   item,
-  showIgnore = true,
   userLinkBase = "/recent",
   source = "recent",
 }: {
   item: RecentItem;
-  showIgnore?: boolean;
   userLinkBase?: string;
-  source?: "recent" | "likes";
+  source?: "recent" | "likes" | "profile";
 }) {
   const time = formatLocalDateTime(item.date);
   const albumPic = item.track.album?.picture ?? null;
@@ -48,6 +45,11 @@ export function RecentPlayItem({
     staleTime: 30_000,
   });
   const isPremium = Boolean(me?.user?.subscribed);
+
+  const [liked, setLiked] = React.useState<boolean>(Boolean(item.liked));
+  React.useEffect(() => {
+    setLiked(Boolean(item.liked));
+  }, [item.liked, item.track.id]);
 
   const publishPlayed = (resp: PlayResponse) => {
     const t = resp.track;
@@ -99,8 +101,26 @@ export function RecentPlayItem({
     }
   };
 
+  const onLikeClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const prev = liked;
+    const next = !prev;
+    setLiked(next);
+    try {
+      await apiService.setLike(item.track.id, next);
+    } catch (err) {
+      setLiked(prev);
+      const msg = (err as Error)?.message || "Failed to update like";
+      // Keep it minimal to avoid noisy alerts
+      console.error(msg);
+    }
+  };
+
+  const Container: React.ElementType = source === "profile" ? "div" : "li";
+
   return (
-    <li className="recent-item" data-testid="recent-item">
+    <Container className="recent-item" data-testid="recent-item">
       <div className="recent-left">
         <div className="recent-avatar-wrap">
           {albumPic ? (
@@ -145,15 +165,30 @@ export function RecentPlayItem({
           <span className="recent-time">{time}</span>
         </div>
       </div>
-      <div className="recent-actions">
-        {showIgnore && (
-          <IgnoreTrackButton
-            trackId={item.track.id}
-            className="recent-ignore-btn"
+      <button
+        className={`recent-like-btn${liked ? " liked" : ""}`}
+        aria-label={liked ? "Unlike" : "Like"}
+        title={liked ? "Unlike" : "Like"}
+        aria-pressed={liked}
+        onClick={onLikeClick}
+      >
+        <svg
+          width="28"
+          height="28"
+          viewBox="0 0 24 24"
+          role="img"
+          aria-hidden="true"
+        >
+          <path
+            d="M12 21s-6.716-4.364-9.293-8.05C.813 10.27 1.135 7.3 3.05 5.636 4.964 3.97 7.77 4.22 9.5 6c.56.57 1.03 1.23 1.5 1.94.47-.71.94-1.37 1.5-1.94 1.73-1.78 4.536-2.03 6.45-.364 1.915 1.664 2.237 4.634.343 7.314C18.716 16.636 12 21 12 21z"
+            fill={liked ? "#ff4d6d" : "transparent"}
+            stroke="#ff4d6d"
+            strokeWidth="2"
+            strokeLinejoin="round"
           />
-        )}
-      </div>
-    </li>
+        </svg>
+      </button>
+    </Container>
   );
 }
 
@@ -223,7 +258,6 @@ export function RecentActivityWidget({
             <RecentPlayItem
               key={`${it.user.id}-${it.track.id}-${it.date}`}
               item={it}
-              showIgnore={false}
               userLinkBase="/recent"
               source="recent"
             />
