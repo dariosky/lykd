@@ -59,10 +59,15 @@ async def renew_token_if_expired(retry_state):
                     "user"
                 ]  # we need a user to renew the token
                 db_session: Session = retry_state.kwargs.get("db_session")
-                spotify = retry_state.args[0]
+                spotify = (
+                    retry_state.args[0]
+                    if retry_state.args
+                    else retry_state.kwargs.get("spotify")
+                )
                 if (
                     exception.status_code == 401
                     and "access token expired" in exception.detail
+                    and spotify is not None
                 ):
                     updated_tokens = await spotify.refresh_token(user=user)
                     user.tokens = {

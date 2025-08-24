@@ -20,9 +20,66 @@ from utils.dates import parse_date
 logger = logging.getLogger("lykd.likes")
 
 
-async def process_likes(
-    db: Session, spotify: Spotify, user: User, playlist_name: str = "Lykd Songs"
-) -> None:
+async def get_one_liked_playlist(
+    user: User, db_session: Session, spotify: Spotify
+) -> dict:
+    """This ensure that we are using ONE playlist for likes per user
+
+    the target name depends on the user.app_name - but it will make sure to get
+    just one playlist (the oldest) between all the ones named after Lykd or Spotlike
+    """
+    playlists = await spotify.get_all_playlists(user=user, db_session=db_session)
+    playlist_name_candidates = {"Liked playlist", "Lykd Songs", "Lykd playlist"}
+    same_name_playlists = [
+        p
+        for p in playlists
+        if p["name"] in playlist_name_candidates and p["owner"]["id"] == user.id
+    ]
+    target_name = "Liked playlist" if user.app_name == "spotlike" else "Lykd playlist"
+    target_description = (
+        f"All the songs you like - synced by {user.app_name.value.capitalize()}"
+    )
+    target_public = False  # the synced playlist is always private
+    assert target_name in playlist_name_candidates  # nosec B101
+
+    if not same_name_playlists:
+        spotify_playlist = await spotify.playlist_create(
+            user,
+            description=target_description,
+            name=target_name,
+            public=target_public,
+        )
+    else:
+        spotify_playlist = same_name_playlists[-1]  # getting the oldest
+        if len(same_name_playlists) > 1:  # removing the others
+            for duplicated_playlist in same_name_playlists[:-1]:
+                playlist_id = duplicated_playlist["id"]
+                logger.debug(
+                    f"Removing duplicated playlist {playlist_id} - {user} - {duplicated_playlist['name']}"
+                )
+                await spotify.delete_playlist(
+                    user=user, db_session=db_session, playlist_id=playlist_id
+                )
+        changes = {}
+        if spotify_playlist["name"] != target_name:
+            changes["name"] = target_name
+        if spotify_playlist["description"] != target_description:
+            changes["description"] = target_description
+        if spotify_playlist["public"] != target_public:
+            spotify_playlist["public"] = target_public
+
+        if changes:
+            await spotify.playlist_change(
+                user=user,
+                db_session=db_session,
+                playlist_id=spotify_playlist["id"],
+                **changes,
+            )
+
+    return spotify_playlist
+
+
+async def process_likes(db: Session, spotify: Spotify, user: User) -> None:
     # here I want to get the songs to add and remove - we have the fast or the slow way
     now = datetime.datetime.now(datetime.timezone.utc)
     full_scan = (
@@ -79,12 +136,11 @@ async def process_likes(
 
             new_spotify_likes.append(spotify_like)
 
-        all_spotify_likes = new_spotify_likes
         tracks_to_remove = set()
 
     if new_spotify_likes or tracks_to_remove or full_scan:
-        spotify_playlist = await spotify.get_or_create_playlist(
-            user=user, db_session=db, playlist_name=playlist_name
+        spotify_playlist = await get_one_liked_playlist(
+            user=user, db_session=db, spotify=spotify
         )
         playlist = store_playlist(spotify_playlist, db_session=db)
 
@@ -94,7 +150,7 @@ async def process_likes(
         # in the full_scan we should retrieve also the whole playlist to decide what
         # DONE: Don't do a full-scan if the snapshot is unchanged
         if playlist.snapshot_id != spotify_playlist.get("snapshot_id"):
-            logger.debug(f"Full scan to sync playlist {playlist_name}")
+            logger.debug(f"Full scan to sync playlist {playlist.name}")
             playlist_request = partial(
                 spotify.get_playlist_tracks, playlist_id=playlist.id
             )
@@ -105,6 +161,26 @@ async def process_likes(
             existing_tracks_ids = {
                 item.get("track", {}).get("id") for item in existing_spotify_tracks
             }
+            if (playlist_len := len(existing_spotify_tracks)) != (
+                playlist_unique := len(existing_tracks_ids)
+            ) or True:  # remove the "or True"
+                logger.warning(
+                    "Duplicates found:"
+                    f" we have {playlist_len} vs {playlist_unique} unique."
+                    " Recreating the playlist."
+                )
+                tracks_to_remove = existing_tracks_ids  # remove all
+
+                new_spotify_likes = []  # get all the likes again - avoiding duplicates from the oldest
+                distinct_tracks = set()
+                for like in existing_spotify_tracks[::-1]:
+                    track_id = like.get("track", {}).get("id")
+                    if track_id not in distinct_tracks:
+                        distinct_tracks.add(track_id)
+                        new_spotify_likes.append(like)
+                new_spotify_likes = new_spotify_likes[::-1]
+                existing_tracks_ids = set()  # we are going to delete them all
+
         else:
             existing_tracks_ids = {
                 pt.track_id
@@ -117,6 +193,12 @@ async def process_likes(
     else:
         # we assume that the playlist contains what we knew from the DB
         existing_tracks_ids = all_db_like_ids
+
+    # here I should have:
+    # - new_spotify_likes: the list of likes to add in order
+    # - tracks_to_remove: the set of track IDs to remove
+    # - existing_tracks_ids: the set of track in the Spotify playlist
+    # - all_db_like_ids: the set of tracks in the DB
 
     if new_spotify_likes or tracks_to_remove or existing_tracks_ids != all_db_like_ids:
         tracks_to_add = {
@@ -142,7 +224,7 @@ async def process_likes(
             playlist_id=playlist.id,
             tracks_to_add=[  # we need the order of the tracks to be preserved
                 track_id
-                for spotify_like in all_spotify_likes
+                for spotify_like in new_spotify_likes
                 if (track_id := spotify_like.get("track", {}).get("id"))
                 not in existing_tracks_ids
             ],

@@ -20,7 +20,7 @@ from pathlib import Path
 import logging
 
 import settings
-from models.auth import User, populate_username, OAuthState
+from models.auth import User, populate_username, OAuthState, App
 from models.common import get_session
 from models.music import Like, Play
 from routes.deps import current_user
@@ -229,6 +229,11 @@ async def spotify_callback(
                 user_info["images"][0]["url"] if user_info.get("images") else ""
             )
             existing_user.subscribed = user_info["product"] == "premium"
+            if existing_user.app_name != "lykd":
+                slack.send_message(f"📈 User migrated to LYKD: {existing_user}")
+                existing_user.app_name = (
+                    App.lykd
+                )  # Migrate any existing user to lykd app
             # If username not set (legacy), assign one now
             if not existing_user.username:
                 populate_username(session, existing_user)
@@ -248,10 +253,11 @@ async def spotify_callback(
                     "expires_in": token_data.get("expires_in"),
                     "scope": token_data.get("scope"),
                 },
+                app_name=App.lykd,
             )
             populate_username(session, user)
             session.add(user)
-            slack.send_message(f"🐣New user connected to Spotify: {user.email}")
+            slack.send_message(f"🐣New user connected to Spotify: {user}")
 
         # Link the oauth_state to the user who completed the handshake
         oauth_state.user_id = user.id

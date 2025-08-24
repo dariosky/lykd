@@ -9,6 +9,7 @@ from models.common import get_db
 from services import Spotify
 from services.likes import process_user
 from sqlmodel import select
+
 from utils import setup_logs, time_it
 
 logger = logging.getLogger("lykd.fetch")
@@ -32,7 +33,8 @@ async def fetch_all(max_concurrency: int = 3):
     # Get database session and fetch all users
 
     with get_db() as session:
-        spotify_client = Spotify(db_session=session)
+        spotify_lykd = Spotify(app_name="lykd")
+        spotify_spotlike = Spotify(app_name="spotlike")
         users = session.exec(select(User)).all()
 
         logger.debug(f"Found {len(users)} users in the database")
@@ -44,15 +46,16 @@ async def fetch_all(max_concurrency: int = 3):
             logger.info("No active users found.")
             return
 
-        logger.info(
-            f"Processing {len(active_users)} users with up to {max_concurrency} concurrent tasks..."
-        )
+        logger.info(f"Processing {len(active_users)} users...")
 
         # Bounded concurrency semaphore
         sem = asyncio.Semaphore(max_concurrency)
 
         async def _process_user_bounded(user: User):
             async with sem:
+                spotify_client = (
+                    spotify_lykd if user.app_name == "lykd" else spotify_spotlike
+                )
                 return await process_user(session, user, spotify_client)
 
         # Execute user processing with bounded concurrency
@@ -66,7 +69,8 @@ async def fetch_all(max_concurrency: int = 3):
 
         # Commit any token updates
         session.commit()
-        await spotify_client.close()
+        await spotify_lykd.close()
+        await spotify_spotlike.close()
 
     logger.info("Finished processing all users.")
 

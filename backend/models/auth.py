@@ -2,12 +2,18 @@
 
 import datetime
 import re
+from enum import Enum
 from typing import Any
 
 from sqlalchemy import func
 from sqlmodel import SQLModel, Field, Column, JSON, Session, select
 from .common import CamelModel
 from .types import UtcAwareDateTime  # adjust import as needed
+
+
+class App(str, Enum):
+    spotlike = "spotlike"
+    lykd = "lykd"
 
 
 class User(SQLModel, CamelModel, table=True):
@@ -45,6 +51,8 @@ class User(SQLModel, CamelModel, table=True):
         default=None,
         sa_column=Column(UtcAwareDateTime(), onupdate=func.now(), nullable=True),
     )
+
+    app_name: App = App.spotlike  # determining the client_id to use
 
     def get_access_token(self) -> str:
         return self.tokens.get("access_token") if self.tokens else None

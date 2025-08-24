@@ -2,9 +2,11 @@
 
 import datetime
 import logging
+import os
 import secrets
 from typing import Any, AsyncGenerator
 from urllib.parse import urlencode
+from collections import defaultdict
 
 import httpx
 from sqlmodel import Session
@@ -23,9 +25,15 @@ logger = logging.getLogger("lykd.spotify")
 class Spotify:
     """Handle Spotify OAuth flow and API calls"""
 
-    def __init__(self):
-        self.client_id = settings.SPOTIFY_CLIENT_ID
-        self.client_secret = settings.SPOTIFY_CLIENT_SECRET
+    def __init__(self, app_name: str = "lykd"):
+        if app_name == "lykd":
+            self.client_id = settings.SPOTIFY_CLIENT_ID
+            self.client_secret = settings.SPOTIFY_CLIENT_SECRET
+        elif app_name == "spotlike":
+            self.client_id = os.getenv("SPOTLIKE_CLIENT_ID")
+            self.client_secret = os.getenv("SPOTLIKE_CLIENT_SECRET")
+        else:
+            raise Exception(f"Unknown app name: {app_name}")
         self.redirect_uri = f"{settings.API_URL}/spotify/callback"
         self.scopes = [
             "user-read-email",
@@ -270,34 +278,6 @@ class Spotify:
             if not next_page:
                 break
 
-    @spotify_retry()
-    async def get_or_create_playlist(
-        self, user: User, db_session: Session, playlist_name: str
-    ):
-        playlists = await self.get_all_playlists(user=user, db_session=db_session)
-        same_name_playlists = [
-            p
-            for p in playlists
-            if p["name"] == playlist_name and p["owner"]["id"] == user.id
-        ]
-
-        if not same_name_playlists:
-            playlist = await self.playlist_create(
-                user,
-                description="All the songs you like - synced by Lykd",
-                name=playlist_name,
-                public=False,
-            )
-        else:
-            playlist = same_name_playlists[-1]  # getting the last
-            if len(same_name_playlists) > 1:
-                for duplicated_playlist in same_name_playlists[:-1]:
-                    playlist_id = duplicated_playlist["id"]
-                    logger.debug(f"Removing duplicated playlist {playlist_id}")
-                    await self.delete_playlist(user, playlist_id)
-
-        return playlist
-
     async def get_all_playlists(self, user: User, db_session: Session):
         return await self.get_all(
             user=user, db_session=db_session, request=self.get_playlists_page
@@ -306,6 +286,7 @@ class Spotify:
     @spotify_retry()
     async def playlist_create(
         self,
+        *,
         user: User,
         db_session: Session,
         description: str | None,
@@ -313,12 +294,15 @@ class Spotify:
         public: bool,
     ):
         logger.info(f"Creating playlist {name} for {user}")
-        params = {"name": name, "description": description, public: public}
         url = f"https://api.spotify.com/v1/users/{user.id}/playlists"
         response = await self.client.post(
             url,
             headers=self.get_headers(user),
-            json=params,
+            json={
+                "name": name,
+                "description": description,
+                "public": public,
+            },
         )
 
         if response.status_code != 201:
@@ -328,7 +312,7 @@ class Spotify:
 
     @spotify_retry()
     async def delete_playlist(
-        self, user: User, db_session: Session, playlist_id: str
+        self, *, user: User, db_session: Session, playlist_id: str
     ) -> None:
         logger.info(f"Deleting playlist {playlist_id} for {user}")
         url = f"https://api.spotify.com/v1/playlists/{playlist_id}/followers"
@@ -343,8 +327,44 @@ class Spotify:
         return None
 
     @spotify_retry()
+    async def playlist_change(
+        self,
+        *,
+        user: User,
+        db_session: Session,
+        playlist_id: str,
+        name: str | None = None,
+        description: str | None = None,
+        public: bool | None = None,
+        collaborative: bool | None = None,
+    ) -> None:
+        """Update playlist details"""
+        logger.info(f"Updating playlist {playlist_id} for {user}")
+        payload: dict[str, Any] = dict(
+            name=name,
+            description=description,
+            public=public,
+            collaborative=collaborative,
+        )
+        payload = {k: v for k, v in payload.items() if v is not None}
+        if not payload:
+            logger.debug("playlist_change called with no changes; skipping request")
+            return None
+
+        url = f"https://api.spotify.com/v1/playlists/{playlist_id}"
+        response = await self.client.put(
+            url,
+            headers={**self.get_headers(user), "Content-Type": "application/json"},
+            json=payload,
+        )
+        if response.status_code not in (200, 202, 204):
+            raise exception_from_response(response, f"PUT {url} failed")
+        return None
+
+    @spotify_retry()
     async def change_playlist(
         self,
+        *,
         user: User,
         db_session: Session,
         playlist_id: str,
@@ -378,7 +398,7 @@ class Spotify:
                     raise exception_from_response(
                         remove_response, f"Remove tracks from {url} failed"
                     )
-                snapshot_id = remove_response.text
+                snapshot_id = remove_response.json()["snapshot_id"]
 
         # Add tracks if specified
         if tracks_to_add:
@@ -403,11 +423,87 @@ class Spotify:
                     raise exception_from_response(
                         add_response, f"Add tracks to {url} failed"
                     )
-                snapshot_id = remove_response.text
+                snapshot_id = add_response.json()["snapshot_id"]
+        return snapshot_id
+
+    async def remove_duplicates_from_playlist(
+        self,
+        *,
+        user: User,
+        db_session: Session,
+        playlist_id: str,
+        existing_tracks: list[dict[str, Any]],
+    ) -> str | None:
+        """Remove duplicate tracks from a playlist keeping the last (oldest) occurrence.
+
+        We compute positions for duplicates and issue a single DELETE call using the
+        "positions" parameter to avoid index shifting issues.
+        Returns the new snapshot_id if any duplicates were removed, else None.
+        """
+        # Build map track_id -> positions (ascending). Skip local/unavailable tracks.
+        positions_map: dict[str, list] = defaultdict(list)
+        for idx, item in enumerate(existing_tracks):
+            track = (item or {}).get("track") or {}
+            track_id = track.get("id")
+            if not track_id:
+                continue
+            positions_map[track_id].append(idx)
+
+        # Flatten all positions to delete, keeping only the last (highest) per track
+        duplicates: list[tuple[int, str]] = []  # (position, track_id)
+        for track_id, positions in positions_map.items():
+            if len(positions) <= 1:
+                continue
+            for pos in positions[:-1]:  # remove all but the last occurrence
+                duplicates.append((pos, track_id))
+
+        if not duplicates:
+            logger.debug(
+                f"No duplicates to remove for playlist {playlist_id} (user {user})"
+            )
+            return None
+
+        # Sort by position ascending; we'll process from the end to start
+        duplicates.sort(key=lambda x: x[0])
+        url = f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks"
+        snapshot_id: str | None = None
+        total_to_remove = len(duplicates)
+
+        @spotify_retry()
+        async def delete_call(*, user, db_session, spotify, payload):
+            return await spotify.client.request(
+                method="DELETE",
+                url=url,
+                headers={**self.get_headers(user), "Content-Type": "application/json"},
+                json={"tracks": payload},
+            )
+
+        # Process in batches from the end to avoid index shifting
+        for chunk in reverse_block_chunks(duplicates, 50):
+            # Group this chunk by track_id and sort positions descending within each track
+            batch_map = defaultdict(list)  # type: ignore[var-annotated]
+            for pos, tid in chunk:
+                batch_map[tid].append(pos)
+            tracks_payload = [
+                {"uri": get_uri(tid), "positions": sorted(pos_list, reverse=True)}
+                for tid, pos_list in batch_map.items()
+            ]
+            response = await delete_call(  # we nest the call to have spotify_retry
+                user=user, db_session=db_session, spotify=self, payload=tracks_payload
+            )
+            if response.status_code != 200:
+                raise exception_from_response(
+                    response, f"Remove duplicates at {url} failed"
+                )
+            snapshot_id = response.json().get("snapshot_id")
+
+        logger.info(
+            f"Removed {total_to_remove} duplicate occurrences from playlist {playlist_id}"
+        )
         return snapshot_id
 
     async def yield_tracks(
-        self, user: User, db_session: Session, tracks: set
+        self, *, user: User, db_session: Session, tracks: set
     ) -> AsyncGenerator[dict]:
         """yield tracks from a set of track IDs"""
         for chunk in reverse_block_chunks(tracks, 50):
@@ -514,7 +610,7 @@ class Spotify:
         url = "https://api.spotify.com/v1/me/tracks"
         headers = self.get_headers(user)
         if liked:
-            params = {"ids": [track_id]}
+            params: dict[str, Any] = {"ids": [track_id]}
             if liked_at:
                 params["timestamped_ids"] = [
                     {
