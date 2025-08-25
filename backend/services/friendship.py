@@ -5,6 +5,7 @@ from sqlmodel import Session, select
 
 from models.auth import User
 from models.friendship import Friendship, FriendshipStatus
+from services import email as email_service
 
 logger = logging.getLogger("lykd.friendship")
 
@@ -40,6 +41,13 @@ def request_friendship(
                 existing.responded_at = None
                 session.add(existing)
                 session.commit()
+                # Notify recipient of (re)opened request
+                try:
+                    email_service.send_friend_request_email(
+                        requester=requester, recipient=recipient
+                    )
+                except Exception as e:  # pragma: no cover
+                    logger.error(f"Failed to send friend request email: {e}")
                 return existing
 
     friendship = Friendship(
@@ -51,6 +59,13 @@ def request_friendship(
     )
     session.add(friendship)
     session.commit()
+    # Notify recipient of new request
+    try:
+        email_service.send_friend_request_email(
+            requester=requester, recipient=recipient
+        )
+    except Exception as e:  # pragma: no cover
+        logger.error(f"Failed to send friend request email: {e}")
     return friendship
 
 
@@ -75,6 +90,19 @@ def accept_friendship(
     friendship.responded_at = datetime.datetime.now(datetime.timezone.utc)
     session.add(friendship)
     session.commit()
+
+    # Notify the original requester that their request was accepted
+    try:
+        original_requester = session.exec(
+            select(User).where(User.id == friendship.requested_by_id)
+        ).first()
+        if original_requester:
+            email_service.send_friend_accepted_email(
+                acceptor=requester, original_requester=original_requester
+            )
+    except Exception as e:  # pragma: no cover
+        logger.error(f"Failed to send friend accepted email: {e}")
+
     return friendship
 
 

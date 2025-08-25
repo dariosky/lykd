@@ -30,3 +30,12 @@ BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:3000")
 API_URL = os.getenv("API_URL", f"{BASE_URL}/api")
 
 SLACK_TOKEN = os.getenv("SLACK_TOKEN") or None
+
+# --- Email / SMTP configuration ---
+SMTP_HOST = os.getenv("SMTP_HOST")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USERNAME = os.getenv("SMTP_USERNAME")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
+SMTP_USE_TLS = parse_bool(os.getenv("SMTP_USE_TLS", True))
+SMTP_FROM_EMAIL = os.getenv("SMTP_FROM_EMAIL", "no-reply@lykd.app")
+SMTP_FROM_NAME = os.getenv("SMTP_FROM_NAME", "LYKD")

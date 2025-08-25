@@ -126,7 +126,7 @@ LYKD expands on this concept by creating a full web application that makes your 
 - [x] Add a web player
 - [x] Add a "like" button
 - [x] Support both Spotlike and Lykd app and migrate users
-- [ ] Send email for friend requests
+- [x] Send email for friend requests
 - [ ] Deploy
 - [ ] Deduplicate and show aliases as liked
 - [ ] Add suggestions (including songs listened recently)
