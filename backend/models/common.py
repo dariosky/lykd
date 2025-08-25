@@ -30,9 +30,12 @@ class LoggedModel(sqlmodel.SQLModel, CamelModel):
 
 
 def get_session() -> Generator[Session, None, None]:  # pragma: no cover
-    """Get database session"""
-    with Session(get_engine(), expire_on_commit=False) as session:
+    """Get database session for FastAPI dependency, always closes session."""
+    session = Session(get_engine(), expire_on_commit=False)
+    try:
         yield session
+    finally:
+        session.close()
 
 
 @contextmanager

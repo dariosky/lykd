@@ -116,7 +116,7 @@ export function MiniPlayer() {
 
   React.useEffect(() => {
     fetchState();
-    const id = window.setInterval(fetchState, 3000);
+    const id = window.setInterval(fetchState, 5000); // poll every 5 seconds
     return () => window.clearInterval(id);
   }, [fetchState]);
 

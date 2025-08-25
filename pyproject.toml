@@ -19,6 +19,7 @@ dependencies = [
     "bandit>=1.8.6",
     "python-multipart>=0.0.20",
     "expiringdict>=1.2.2",
+    "websockets>=15.0.1",
 ]
 
 [dependency-groups]

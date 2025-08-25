@@ -21,7 +21,7 @@ def time_it(func):
         finally:
             end_time = time.perf_counter()
             execution_time = end_time - start_time
-            logger.debug(f"\n{func.__name__} completed in {execution_time:.2f} seconds")
+            logger.debug(f"{func.__name__} completed in {execution_time:.2f} seconds")
 
     return async_wrapper
 

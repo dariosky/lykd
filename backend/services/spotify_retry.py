@@ -141,7 +141,7 @@ def before_sleep_log_concise(logger, log_level):
 
 spotify_retry = partial(
     retry,
-    before_sleep=before_sleep_log_concise(logger, logging.WARNING),
+    before_sleep=before_sleep_log_concise(logger, logging.DEBUG),
     wait=wait_retry_after_or_default(
         default_wait=wait_random(0, 0 if settings.TESTING_MODE else 0.5)
     ),
