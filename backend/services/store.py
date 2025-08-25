@@ -24,6 +24,9 @@ def store_track(track, db_session: Session):
     """Store a track and its related data using SQLModel merge for efficient upserts"""
     artists = []
     for artist_data in track.get("artists", []):
+        if not artist_data.get("id") or not artist_data.get("name"):
+            logger.error(f"Invalid artist data, skipping: {artist_data}")
+            continue
         # Create artist instance and merge (upsert)
         try:
             artist = Artist(
@@ -70,6 +73,9 @@ def store_track(track, db_session: Session):
 
         # Handle album artists
         for artist_data in album_data.get("artists", []):
+            if not artist_data.get("id") or not artist_data.get("name"):
+                logger.error(f"Invalid album artist data, skipping: {artist_data}")
+                continue
             try:
                 # Create/merge album artist
                 album_artist = Artist(
@@ -152,8 +158,6 @@ def update_playlist_db(
 def update_likes_db(
     user: User, likes_to_add: list[Like], tracks_to_remove: set[str], db: Session
 ):
-    for like in likes_to_add:
-        db.merge(like)
     if tracks_to_remove:
         db.exec(
             delete(Like).where(
@@ -161,6 +165,8 @@ def update_likes_db(
                 Like.track_id.in_(tuple(tracks_to_remove)),
             )
         )
+    for like in likes_to_add:
+        db.merge(like)
 
 
 def find_missing_tracks(session: Session):

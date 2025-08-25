@@ -515,7 +515,9 @@ class Spotify:
             )
             tracks = resp.get("tracks", [])
             for track_data in tracks:
-                yield track_data
+                # we skip all that don't have a track (i.e. shows)
+                if (track := track_data.get("track", {})) and (track.get("id")):
+                    yield track_data
 
     @spotify_retry()
     async def play(

@@ -163,7 +163,7 @@ async def process_likes(db: Session, spotify: Spotify, user: User) -> None:
             }
             if (playlist_len := len(existing_spotify_tracks)) != (
                 playlist_unique := len(existing_tracks_ids)
-            ) or True:  # remove the "or True"
+            ):
                 logger.warning(
                     "Duplicates found:"
                     f" we have {playlist_len} vs {playlist_unique} unique."
@@ -173,11 +173,11 @@ async def process_likes(db: Session, spotify: Spotify, user: User) -> None:
 
                 new_spotify_likes = []  # get all the likes again - avoiding duplicates from the oldest
                 distinct_tracks = set()
-                for like in existing_spotify_tracks[::-1]:
-                    track_id = like.get("track", {}).get("id")
+                for spot_like in existing_spotify_tracks[::-1]:
+                    track_id = spot_like["track"]["id"]
                     if track_id not in distinct_tracks:
                         distinct_tracks.add(track_id)
-                        new_spotify_likes.append(like)
+                        new_spotify_likes.append(spot_like)
                 new_spotify_likes = new_spotify_likes[::-1]
                 existing_tracks_ids = set()  # we are going to delete them all
 
@@ -209,8 +209,8 @@ async def process_likes(db: Session, spotify: Spotify, user: User) -> None:
             f"Likes for {user}: {len(tracks_to_add)} to add, {len(tracks_to_remove)} to remove"
         )
 
-        for like in new_spotify_likes:
-            track_data = like.get("track", {})
+        for spot_like in new_spotify_likes:
+            track_data = spot_like.get("track", {})
             try:
                 store_track(track_data, db)
             except Exception as e:

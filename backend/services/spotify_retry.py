@@ -4,7 +4,7 @@ from functools import partial
 import httpx
 from fastapi import HTTPException
 from sqlmodel import Session
-from tenacity import Future, retry, before_sleep_log, wait_random, stop_after_attempt
+from tenacity import Future, retry, wait_random, stop_after_attempt
 from tenacity.wait import wait_base
 
 import settings
@@ -84,8 +84,8 @@ async def renew_token_if_expired(retry_state):
                     exception.status_code == 400
                     and "Refresh token revoked" in exception.detail
                 ):
-                    logger.warning("User is gone, marking as inactive")
-                    slack.send_message(f"🛑User is gone: {user.email}")
+                    logger.warning(f"User {user} is gone, marking as inactive")
+                    slack.send_message(f"🛑User is gone: {user}. Marking as inactive.")
                     user.tokens = None
                     if db_session:
                         logger.debug(f"Refreshed the user {user} tokens")
@@ -100,9 +100,48 @@ async def renew_token_if_expired(retry_state):
                 raise exception
 
 
+def before_sleep_log_concise(logger, log_level):
+    def log_it(retry_state):
+        wait = retry_state.next_action.sleep if retry_state.next_action else None
+        if wait is not None:  # wait is in seconds
+            wait_str = humanize_milliseconds(wait * 1000)
+        else:
+            wait_str = "unknown time"
+        fn_name = retry_state.fn.__qualname__
+        exception = retry_state.outcome.exception() if retry_state.outcome else None
+        if exception:
+            # Try to extract status code, method, and URL if present
+            status_code = getattr(exception, "status_code", None)
+            detail = getattr(exception, "detail", "")
+            method = None
+            url = None
+            # Try to parse method and URL from detail string
+            if detail:
+                import re
+
+                match = re.search(
+                    r"(GET|POST|PUT|DELETE|PATCH) (https?://[^ ]+)", detail
+                )
+                if match:
+                    method, url = match.group(1), match.group(2)
+            exc_type = type(exception).__name__
+            msg = f"Retrying {fn_name} in {wait_str} as it raised {exc_type}:"
+            if status_code:
+                msg += f" {status_code}:"
+            if method and url:
+                msg += f" {method} {url} failed"
+            else:
+                msg += f" {str(exception)}"
+        else:
+            msg = f"Retrying {fn_name} in {wait_str}"
+        logger.log(log_level, msg)
+
+    return log_it
+
+
 spotify_retry = partial(
     retry,
-    before_sleep=before_sleep_log(logger, logging.WARNING),
+    before_sleep=before_sleep_log_concise(logger, logging.WARNING),
     wait=wait_retry_after_or_default(
         default_wait=wait_random(0, 0 if settings.TESTING_MODE else 0.5)
     ),
