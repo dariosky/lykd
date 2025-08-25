@@ -14,6 +14,7 @@ from routes.spotify_route import router as spotify_router
 from routes.friendship import router as friendship_router
 from routes.recent_route import router as recent_router
 from routes.ignore_route import router as ignore_router
+from routes.spotify_streaming import router as streaming_router
 from services import Spotify
 from settings import PROJECT_PATH
 from starlette.middleware import Middleware
@@ -88,5 +89,6 @@ def create_app() -> FastAPI:
     app.include_router(friendship_router, tags=["friendship"])
     app.include_router(recent_router)
     app.include_router(ignore_router)
+    app.include_router(streaming_router)
 
     return app
