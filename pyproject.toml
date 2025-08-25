@@ -33,10 +33,6 @@ dev = [
     "pre-commit>=3.0.0",
 ]
 
-[[tool.uv.index]]
-url = "https://gsrio.jfrog.io/artifactory/api/pypi/gsr-pypi/simple"
-default = true
-
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "session"
 addopts = [

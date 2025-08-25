@@ -12,6 +12,11 @@ repos:
 
   - repo: local
     hooks:
+      - id: sanitize-locks
+        name: sanitize locks
+        entry: python scripts/sanitize_locks.py
+        language: system
+        pass_filenames: false
       - id: prettier
         name: prettier
         entry: bash -c 'cd frontend && npm run format:staged'
