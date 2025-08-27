@@ -64,6 +64,7 @@ describe("Friendship UI", () => {
         username: "otheruser",
         picture: null,
         join_date: new Date().toISOString(),
+        is_friend: true,
       },
       stats: {
         total_plays: 0,
