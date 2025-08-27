@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import PublicProfilePage from "./PublicProfilePage";
 import Layout from "./Layout";
 import { apiService } from "./api";
+import { AuthProvider } from "./AuthContext";
 
 function renderWithProviders(ui: React.ReactNode, initialEntries: string[]) {
   const queryClient = new QueryClient({
@@ -14,25 +15,27 @@ function renderWithProviders(ui: React.ReactNode, initialEntries: string[]) {
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter
-        initialEntries={initialEntries}
-        future={{
-          v7_relativeSplatPath: true,
-          v7_startTransition: true,
-        }}
-      >
-        <Routes>
-          <Route path="/user/:username" element={ui} />
-          <Route
-            path="/"
-            element={
-              <Layout>
-                <div>Home</div>
-              </Layout>
-            }
-          />
-        </Routes>
-      </MemoryRouter>
+      <AuthProvider>
+        <MemoryRouter
+          initialEntries={initialEntries}
+          future={{
+            v7_relativeSplatPath: true,
+            v7_startTransition: true,
+          }}
+        >
+          <Routes>
+            <Route path="/user/:username" element={ui} />
+            <Route
+              path="/"
+              element={
+                <Layout>
+                  <div>Home</div>
+                </Layout>
+              }
+            />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>
     </QueryClientProvider>,
   );
 }
@@ -135,19 +138,11 @@ describe("Friendship UI", () => {
       },
     });
 
-    render(
-      <QueryClientProvider client={new QueryClient()}>
-        <MemoryRouter
-          future={{
-            v7_relativeSplatPath: true,
-            v7_startTransition: true,
-          }}
-        >
-          <Layout>
-            <div>Home</div>
-          </Layout>
-        </MemoryRouter>
-      </QueryClientProvider>,
+    renderWithProviders(
+      <Layout>
+        <div>Home</div>
+      </Layout>,
+      ["/"],
     );
 
     // Bell visible with badge 1

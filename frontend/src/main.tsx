@@ -18,6 +18,7 @@ import RecentPlaysPage from "./RecentPlaysPage";
 import IgnoredPage from "./IgnoredPage";
 import LikesPage from "./LikesPage";
 import Layout from "./Layout";
+import { AuthProvider } from "./AuthContext";
 import "./index.css";
 import "./common.css";
 
@@ -47,30 +48,32 @@ function LayoutRoute() {
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter
-        future={{
-          v7_relativeSplatPath: true,
-          v7_startTransition: true,
-        }}
-      >
-        <Routes>
-          {/* All primary routes are nested under Layout to persist MiniPlayer */}
-          <Route element={<LayoutRoute />}>
-            <Route path="/" element={<App />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/spotify/import" element={<SpotifyImportPage />} />
-            <Route path="/recent" element={<RecentPlaysPage />} />
-            <Route path="/likes" element={<LikesPage />} />
-            <Route path="/ignored" element={<IgnoredPage />} />
-            <Route
-              path="/services"
-              element={<Navigate to="/settings" replace />}
-            />
-            <Route path="/user/:username" element={<PublicProfilePage />} />
-            <Route path="/error" element={<ErrorPageWrapper />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+      <AuthProvider>
+        <BrowserRouter
+          future={{
+            v7_relativeSplatPath: true,
+            v7_startTransition: true,
+          }}
+        >
+          <Routes>
+            {/* All primary routes are nested under Layout to persist MiniPlayer */}
+            <Route element={<LayoutRoute />}>
+              <Route path="/" element={<App />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/spotify/import" element={<SpotifyImportPage />} />
+              <Route path="/recent" element={<RecentPlaysPage />} />
+              <Route path="/likes" element={<LikesPage />} />
+              <Route path="/ignored" element={<IgnoredPage />} />
+              <Route
+                path="/services"
+                element={<Navigate to="/settings" replace />}
+              />
+              <Route path="/user/:username" element={<PublicProfilePage />} />
+              <Route path="/error" element={<ErrorPageWrapper />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
     </QueryClientProvider>
   </React.StrictMode>,
 );

@@ -4,10 +4,10 @@ import { useNavigate, useLocation } from "react-router-dom";
 import {
   apiService,
   queryKeys,
-  UserResponse,
   PendingRequestsResponse,
   ReportsResponse,
 } from "./api";
+import { useAuth } from "./AuthContext";
 import "./Layout.css";
 import MiniPlayer from "./MiniPlayer";
 
@@ -23,18 +23,16 @@ function Layout({ children }: LayoutProps) {
   const [isNotifOpen, setIsNotifOpen] = React.useState(false);
   const [isAdminOpen, setIsAdminOpen] = React.useState(false);
 
-  // Current user query
-  const { data: userResponse, refetch: refetchUser } = useQuery<
-    UserResponse,
-    Error
-  >({
-    queryKey: queryKeys.currentUser,
-    queryFn: apiService.getCurrentUser,
-    staleTime: 30 * 1000, // 30 seconds
-    retry: 1, // Don't retry too much for user info
-  });
+  const { user: currentUser, isLoggedIn } = useAuth();
 
-  const currentUser = userResponse?.user;
+  // Helper to ensure getPendingRequests only runs if logged in (using AuthContext)
+  const getPendingRequestsIfLoggedIn = React.useCallback(async () => {
+    if (isLoggedIn) {
+      return await apiService.getPendingRequests();
+    } else {
+      return { pending: [] };
+    }
+  }, [isLoggedIn]);
 
   // Pending friendship requests (fetch once user query has resolved)
   const { data: pendingResp, refetch: refetchPending } = useQuery<
@@ -42,8 +40,8 @@ function Layout({ children }: LayoutProps) {
     Error
   >({
     queryKey: queryKeys.pendingRequests,
-    queryFn: apiService.getPendingRequests,
-    enabled: userResponse !== undefined, // run after user query resolves
+    queryFn: getPendingRequestsIfLoggedIn,
+    enabled: isLoggedIn, // run after user query resolves
     staleTime: 2 * 60 * 1000,
     refetchInterval: 5 * 60 * 1000,
   });
@@ -170,11 +168,10 @@ function Layout({ children }: LayoutProps) {
     if (urlParams.get("spotify") === "connected") {
       // console.log("Spotify connected successfully!");
       // Refetch user data to get the updated information
-      refetchUser();
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
     }
-  }, [refetchUser]);
+  }, []);
 
   return (
     <div className="layout">

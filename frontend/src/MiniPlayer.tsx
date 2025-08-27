@@ -3,6 +3,7 @@ import { apiService } from "./api";
 import "./MiniPlayer.css";
 import { on } from "./playbackBus";
 import { ensureWebPlaybackDevice } from "./spotifyWeb";
+import { useAuth } from "./AuthContext";
 
 interface PlaybackItem {
   id: string;
@@ -94,6 +95,23 @@ export function MiniPlayer() {
     }
   }, [lastEndedTrackId]);
 
+  const { isLoggedIn } = useAuth();
+
+  // Helper to ensure fetchState only runs if logged in (using AuthContext)
+  const fetchStateIfLoggedIn = React.useCallback(async () => {
+    if (isLoggedIn) {
+      await fetchState();
+    } else {
+      setState((prev) => ({
+        ...prev,
+        item: null,
+        isPlaying: false,
+        progressMs: 0,
+        deviceName: null,
+      }));
+    }
+  }, [fetchState, isLoggedIn]);
+
   // Subscribe to immediate play events to update UI without waiting for polling
   React.useEffect(() => {
     const off = on("played", (p) => {
@@ -115,10 +133,19 @@ export function MiniPlayer() {
   }, []);
 
   React.useEffect(() => {
-    fetchState();
-    const id = window.setInterval(fetchState, 5000); // poll every 5 seconds
-    return () => window.clearInterval(id);
-  }, [fetchState]);
+    let intervalId: number | undefined;
+    let cancelled = false;
+    (async () => {
+      await fetchStateIfLoggedIn();
+      if (!cancelled) {
+        intervalId = window.setInterval(fetchStateIfLoggedIn, 5000);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (intervalId) window.clearInterval(intervalId);
+    };
+  }, [fetchStateIfLoggedIn]);
 
   const onTogglePlay = async () => {
     try {
@@ -144,7 +171,7 @@ export function MiniPlayer() {
         }
         flashOnce("play");
       }
-      setTimeout(fetchState, 400);
+      setTimeout(fetchStateIfLoggedIn, 400);
     } catch (e: any) {
       setError(e?.message || "Failed to toggle");
     }
@@ -165,7 +192,7 @@ export function MiniPlayer() {
         }
       }
       flashOnce("next");
-      setTimeout(fetchState, 800);
+      setTimeout(fetchStateIfLoggedIn, 800);
     } catch (e: any) {
       setError(e?.message || "Failed to skip");
     }
