@@ -15,6 +15,16 @@ interface LayoutProps {
   children: React.ReactNode;
 }
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = React.useState(window.innerWidth <= 600);
+  React.useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 600);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+  return isMobile;
+}
+
 function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -24,6 +34,7 @@ function Layout({ children }: LayoutProps) {
   const [isAdminOpen, setIsAdminOpen] = React.useState(false);
 
   const { user: currentUser, isLoggedIn } = useAuth();
+  const isMobile = useIsMobile();
 
   // Helper to ensure getPendingRequests only runs if logged in (using AuthContext)
   const getPendingRequestsIfLoggedIn = React.useCallback(async () => {
@@ -213,7 +224,8 @@ function Layout({ children }: LayoutProps) {
           </div>
 
           <div className="header-actions">
-            {currentUser?.username && (
+            {/* Public profile button: only show in header if not mobile */}
+            {currentUser?.username && !isMobile && (
               <button
                 className="public-profile-button"
                 onClick={handlePublicProfileClick}
@@ -440,6 +452,31 @@ function Layout({ children }: LayoutProps) {
                   <div className="dropdown-user-info">
                     <span className="dropdown-email">{currentUser.email}</span>
                   </div>
+                  {/* On mobile, show public profile button in dropdown */}
+                  {isMobile && (
+                    <button
+                      className="dropdown-item"
+                      onClick={handlePublicProfileClick}
+                    >
+                      {/* Outlined world SVG */}
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M2 12h20" />
+                        <path d="M12 2a15.3 15.3 0 0 1 0 20" />
+                        <path d="M12 2a15.3 15.3 0 0 0 0 20" />
+                      </svg>
+                      Public Profile
+                    </button>
+                  )}
                   <div className="dropdown-divider"></div>
                   <button
                     className="dropdown-item"
