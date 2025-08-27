@@ -71,6 +71,8 @@ async def fetch_all(max_concurrency: int = 3):
         session.commit()
         await spotify_lykd.close()
         await spotify_spotlike.close()
+        logger.info(f"Spotify API calls made by Spotlike: {spotify_spotlike.api_usage}")
+        logger.info(f"Spotify API calls made by LYKD: {spotify_lykd.api_usage}")
 
     logger.info("Finished processing all users.")
 

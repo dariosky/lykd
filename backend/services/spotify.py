@@ -62,12 +62,12 @@ class Spotify:
             timeout=30.0,
             limits=httpx.Limits(max_keepalive_connections=5, max_connections=10),
         )
+        self.api_usage = 0  # track the number of API calls made
 
     async def close(self):
         """Explicitly close the HTTP client"""
         await self.client.aclose()
 
-    @spotify_retry()
     def get_authorization_url(self) -> tuple[str, str]:
         """Generate authorization URL and state for OAuth flow"""
         state = secrets.token_urlsafe(32)
@@ -84,7 +84,6 @@ class Spotify:
         auth_url = f"https://accounts.spotify.com/authorize?{urlencode(params)}"
         return auth_url, state
 
-    @spotify_retry()
     async def exchange_code_for_token(self, code: str) -> dict[str, Any]:
         """Exchange authorization code for access token"""
         token_url = "https://accounts.spotify.com/api/token"  # nosec: B105:hardcoded_password_string
@@ -97,20 +96,16 @@ class Spotify:
             "client_secret": self.client_secret,
         }
 
-        response = await self.client.post(token_url, data=data)
-
-        if response.status_code != 200:
-            raise exception_from_response(response, "Failed to exchange code for token")
+        response = await self.request("POST", url=token_url, data=data)
 
         return response.json()
 
-    @spotify_retry()
     async def get_user_info(self, access_token: str) -> dict[str, Any]:
         """Get user information from Spotify API"""
         headers = {"Authorization": f"Bearer {access_token}"}
 
-        response = await self.client.get(
-            "https://api.spotify.com/v1/me", headers=headers
+        response = await self.request(
+            "GET", url="https://api.spotify.com/v1/me", headers=headers
         )
 
         if response.status_code != 200:
@@ -118,12 +113,12 @@ class Spotify:
 
         return response.json()
 
-    @spotify_retry()
     async def refresh_token(self, *, user: User) -> dict[str, Any]:
         """Refresh access token using refresh token"""
         refresh_token = user.get_refresh_token()
-        response = await self.client.post(
-            "https://accounts.spotify.com/api/token",
+        response = await self.request(
+            "POST",
+            url="https://accounts.spotify.com/api/token",
             data={
                 "grant_type": "refresh_token",
                 "refresh_token": refresh_token,
@@ -137,16 +132,19 @@ class Spotify:
 
         return response.json()
 
-    def get_headers(self, user: User):
-        access_token = user.get_access_token()
-        return {"Authorization": f"Bearer {access_token}"}
+    @staticmethod
+    def get_headers(user: User) -> dict[str, str]:
+        if user:
+            access_token = user.get_access_token()
+            return {"Authorization": f"Bearer {access_token}"}
+        else:
+            return {}
 
     @disk_cache(
         cache_dir=f"{settings.BACKEND_DIR}/.cache/spotify",
         namespace="spotify",
         enable=settings.CACHE_ENABLED,
     )
-    @spotify_retry()
     async def get_page(
         self,
         *,
@@ -156,8 +154,13 @@ class Spotify:
         params: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Get a page given an endpoint in the Spotify API"""
-        response = await self.client.get(
-            url, headers=self.get_headers(user), params=params
+        response = await self.request(
+            "GET",
+            user=user,
+            db_session=db_session,
+            url=url,
+            headers=self.get_headers(user),
+            params=params,
         )
 
         if response.status_code != 200:
@@ -284,7 +287,6 @@ class Spotify:
             user=user, db_session=db_session, request=self.get_playlists_page
         )
 
-    @spotify_retry()
     async def playlist_create(
         self,
         *,
@@ -296,38 +298,34 @@ class Spotify:
     ):
         logger.info(f"Creating playlist {name} for {user}")
         url = f"https://api.spotify.com/v1/users/{user.id}/playlists"
-        response = await self.client.post(
-            url,
-            headers=self.get_headers(user),
+        response = await self.request(
+            "POST",
+            user=user,
+            db_session=db_session,
+            url=url,
             json={
                 "name": name,
                 "description": description,
                 "public": public,
             },
         )
-
-        if response.status_code != 201:
-            raise exception_from_response(response, f"Request to {url} failed")
-
         return response.json()
 
-    @spotify_retry()
     async def delete_playlist(
         self, *, user: User, db_session: Session, playlist_id: str
     ) -> None:
         logger.info(f"Deleting playlist {playlist_id} for {user}")
         url = f"https://api.spotify.com/v1/playlists/{playlist_id}/followers"
-        response = await self.client.delete(
-            url,
-            headers=self.get_headers(user),
+        response = await self.request(
+            "DELETE",
+            user=user,
+            db_session=db_session,
+            url=url,
         )
-
         if response.status_code != 200:
             raise exception_from_response(response, f"Delete {url} failed")
-
         return None
 
-    @spotify_retry()
     async def playlist_change(
         self,
         *,
@@ -351,18 +349,17 @@ class Spotify:
         if not payload:
             logger.debug("playlist_change called with no changes; skipping request")
             return None
-
         url = f"https://api.spotify.com/v1/playlists/{playlist_id}"
-        response = await self.client.put(
-            url,
-            headers={**self.get_headers(user), "Content-Type": "application/json"},
+        response = await self.request(
+            "PUT",
+            user=user,
+            db_session=db_session,
+            url=url,
+            headers={"Content-Type": "application/json"},
             json=payload,
         )
-        if response.status_code not in (200, 202, 204):
-            raise exception_from_response(response, f"PUT {url} failed")
         return None
 
-    @spotify_retry()
     async def change_playlist(
         self,
         *,
@@ -374,8 +371,6 @@ class Spotify:
     ):
         """Change a playlist by adding and/or removing tracks"""
         logger.info(f"Changing playlist {playlist_id} for {user}")
-
-        # Remove tracks first if specified
         url = f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks"
         snapshot_id = None
         if tracks_to_remove:
@@ -384,24 +379,19 @@ class Spotify:
             )
             for tracks in reverse_block_chunks(tracks_to_remove, 100):
                 payload = {"tracks": [{"uri": get_uri(t)} for t in tracks]}
-
-                remove_response = await self.client.request(
-                    method="DELETE",
+                remove_response = await self.request(
+                    "DELETE",
+                    user=user,
+                    db_session=db_session,
                     url=url,
-                    headers={
-                        **self.get_headers(user),
-                        "Content-Type": "application/json",
-                    },
+                    headers={"Content-Type": "application/json"},
                     json=payload,
                 )
-
                 if remove_response.status_code != 200:
                     raise exception_from_response(
                         remove_response, f"Remove tracks from {url} failed"
                     )
                 snapshot_id = remove_response.json()["snapshot_id"]
-
-        # Add tracks if specified
         if tracks_to_add:
             logger.debug(
                 f"Adding {len(tracks_to_add)} tracks to playlist {playlist_id}"
@@ -411,15 +401,14 @@ class Spotify:
                     "uris": [get_uri(t) for t in tracks],
                     "position": 0,
                 }
-                add_response = await self.client.post(
-                    url,
-                    headers={
-                        **self.get_headers(user),
-                        "Content-Type": "application/json",
-                    },
+                add_response = await self.request(
+                    "POST",
+                    user=user,
+                    db_session=db_session,
+                    url=url,
+                    headers={"Content-Type": "application/json"},
                     json=payload,
                 )
-
                 if add_response.status_code != 201:
                     raise exception_from_response(
                         add_response, f"Add tracks to {url} failed"
@@ -470,12 +459,13 @@ class Spotify:
         snapshot_id: str | None = None
         total_to_remove = len(duplicates)
 
-        @spotify_retry()
         async def delete_call(*, user, db_session, spotify, payload):
-            return await spotify.client.request(
-                method="DELETE",
+            return await spotify.request(
+                "DELETE",
+                user=user,
+                db_session=db_session,
                 url=url,
-                headers={**self.get_headers(user), "Content-Type": "application/json"},
+                headers={"Content-Type": "application/json"},
                 json={"tracks": payload},
             )
 
@@ -489,7 +479,7 @@ class Spotify:
                 {"uri": get_uri(tid), "positions": sorted(pos_list, reverse=True)}
                 for tid, pos_list in batch_map.items()
             ]
-            response = await delete_call(  # we nest the call to have spotify_retry
+            response = await delete_call(
                 user=user, db_session=db_session, spotify=self, payload=tracks_payload
             )
             if response.status_code != 200:
@@ -547,7 +537,6 @@ class Spotify:
             if (track := item.get("track", {})) and (track.get("id"))
         ]
 
-    @spotify_retry()
     async def play(
         self,
         *,
@@ -565,50 +554,70 @@ class Spotify:
             payload["uris"] = [get_uri(u) if ":" not in u else u for u in uris]
         if position_ms is not None:
             payload["position_ms"] = position_ms
-        headers = {**self.get_headers(user), "Content-Type": "application/json"}
-        response = await self.client.put(url, headers=headers, json=payload or None)
+        response = await self.request(
+            "PUT",
+            user=user,
+            db_session=db_session,
+            url=url,
+            headers={"Content-Type": "application/json"},
+            json=payload or None,
+        )
         if response.status_code not in (200, 202, 204):
             raise exception_from_response(response, f"PUT {url} failed")
         return None
 
-    @spotify_retry()
     async def pause(self, *, user: User, db_session: Session) -> None:
         url = "https://api.spotify.com/v1/me/player/pause"
-        response = await self.client.put(url, headers=self.get_headers(user))
+        response = await self.request(
+            "PUT",
+            user=user,
+            db_session=db_session,
+            url=url,
+        )
         if response.status_code not in (200, 202, 204):
             raise exception_from_response(response, f"PUT {url} failed")
         return None
 
-    @spotify_retry()
     async def next(self, *, user: User, db_session: Session) -> None:
         url = "https://api.spotify.com/v1/me/player/next"
-        response = await self.client.post(url, headers=self.get_headers(user))
+        response = await self.request(
+            "POST",
+            user=user,
+            db_session=db_session,
+            url=url,
+        )
         if response.status_code not in (200, 202, 204):
             raise exception_from_response(response, f"POST {url} failed")
         return None
 
-    @spotify_retry()
     async def transfer_playback(
         self, *, user: User, db_session: Session, device_id: str, play: bool = True
     ) -> None:
         url = "https://api.spotify.com/v1/me/player"
         payload = {"device_ids": [device_id], "play": play}
-        response = await self.client.put(
-            url,
-            headers={**self.get_headers(user), "Content-Type": "application/json"},
+        response = await self.request(
+            "PUT",
+            user=user,
+            db_session=db_session,
+            url=url,
+            headers={"Content-Type": "application/json"},
             json=payload,
         )
         if response.status_code not in (200, 202, 204):
             raise exception_from_response(response, f"PUT {url} failed")
         return None
 
-    @spotify_retry()
     async def get_playback_state(
         self, *, user: User, db_session: Session
     ) -> dict | None:
         """Return playback state or None if nothing is playing/no active device."""
         url = "https://api.spotify.com/v1/me/player"
-        response = await self.client.get(url, headers=self.get_headers(user))
+        response = await self.request(
+            "GET",
+            user=user,
+            db_session=db_session,
+            url=url,
+        )
         if response.status_code == 200:
             return response.json()
         if response.status_code in (202, 204, 404):
@@ -616,17 +625,20 @@ class Spotify:
             return None
         raise exception_from_response(response, f"GET {url} failed")
 
-    @spotify_retry()
     async def get_track(
         self, *, user: User, db_session: Session, track_id: str
     ) -> dict:
         url = f"https://api.spotify.com/v1/tracks/{track_id}"
-        response = await self.client.get(url, headers=self.get_headers(user))
+        response = await self.request(
+            "GET",
+            user=user,
+            db_session=db_session,
+            url=url,
+        )
         if response.status_code != 200:
             raise exception_from_response(response, f"GET {url} failed")
         return response.json()
 
-    @spotify_retry()
     async def set_liked_track(
         self,
         *,
@@ -638,7 +650,6 @@ class Spotify:
     ) -> None:
         """Save or remove a track from the user's likes."""
         url = "https://api.spotify.com/v1/me/tracks"
-        headers = self.get_headers(user)
         if liked:
             params: dict[str, Any] = {"ids": [track_id]}
             if liked_at:
@@ -648,17 +659,47 @@ class Spotify:
                         "added_at": liked_at.isoformat(),
                     }
                 ]
-
-            response = await self.client.put(url, headers=headers, params=params)
+            response = await self.request(
+                "PUT",
+                user=user,
+                db_session=db_session,
+                url=url,
+                params=params,
+            )
             if response.status_code not in (200, 201, 204):
                 raise exception_from_response(response, f"PUT {url} failed")
         else:
-            response = await self.client.delete(
-                url, headers=headers, params={"ids": [track_id]}
+            response = await self.request(
+                "DELETE",
+                user=user,
+                db_session=db_session,
+                url=url,
+                params={"ids": [track_id]},
             )
             if response.status_code not in (200, 201, 204):
                 raise exception_from_response(response, f"DELETE {url} failed")
         return None
+
+    @spotify_retry()
+    async def request(
+        self,
+        method: str,
+        *,
+        user: User = None,
+        db_session: Session = None,
+        url: str,
+        **kwargs,
+    ) -> httpx.Response:
+        """Centralized HTTP request method for Spotify API calls with retry logic."""
+        if user:
+            headers = kwargs.pop("headers", {})
+            headers = {**self.get_headers(user), **headers}
+            kwargs["headers"] = headers
+        response = await self.client.request(method, url, **kwargs)
+        self.api_usage += 1
+        if not (200 <= response.status_code < 300):
+            raise exception_from_response(response, f"Request to {url} failed")
+        return response
 
 
 def get_spotify_client(request: Request) -> Spotify:

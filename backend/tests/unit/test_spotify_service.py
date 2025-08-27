@@ -86,7 +86,7 @@ class TestSpotifyService:
             await spotify_service.exchange_code_for_token("invalid code")
 
         assert exc_info.value.status_code == 400
-        assert "Failed to exchange code for token" in str(exc_info.value.detail)
+        assert "invalid_grant" in str(exc_info.value.detail)
 
     async def test_get_user_info_success(
         self, spotify_service, httpx_mock, test_user_data
@@ -217,7 +217,7 @@ class TestSpotifyService:
         assert exc_info.value.status_code == 400
         assert (
             str(exc_info.value.detail)
-            == 'Failed to exchange code for token: {"error":"invalid_grant"}'
+            == 'Request to https://accounts.spotify.com/api/token failed: {"error":"invalid_grant"}'
         )
 
     async def test_rate_limit_handling(self, spotify_service, httpx_mock):
