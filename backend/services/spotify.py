@@ -591,6 +591,7 @@ class Spotify:
         if allowed_statuses:
             if response.status_code in allowed_statuses:
                 return response
+            raise exception_from_response(response, f"Request to {url} failed: ")
         elif not (200 <= response.status_code < 300):
             raise exception_from_response(response, f"Request to {url} failed")
         return response
