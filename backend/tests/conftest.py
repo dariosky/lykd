@@ -26,6 +26,7 @@ os.environ["SESSION_SECRET_KEY"] = "test_secret_key"
 os.environ["TESTING_MODE"] = "True"
 os.environ["CACHE_ENABLED"] = "False"
 os.environ["SLACK_TOKEN"] = ""
+os.environ["API_PREFIX"] = ""
 
 
 @pytest.fixture(autouse=True, scope="session")

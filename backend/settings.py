@@ -16,7 +16,7 @@ if not SESSION_SECRET_KEY:  # pragma: no cover
 SPOTIFY_CLIENT_ID = os.getenv("LYKD_CLIENT_ID")
 SPOTIFY_CLIENT_SECRET = os.getenv("LYKD_CLIENT_SECRET")
 
-
+API_PREFIX = os.getenv("API_PREFIX", "")
 BACKEND_DIR = Path(__file__).parent
 DATABASE_PATH = BACKEND_DIR / "lykd.sqlite"
 DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DATABASE_PATH}")

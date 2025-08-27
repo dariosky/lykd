@@ -6,7 +6,7 @@ from pathlib import Path
 
 import settings
 from brotli_asgi import BrotliMiddleware
-from fastapi import FastAPI
+from fastapi import FastAPI, APIRouter
 
 from routes.auth_route import router as auth_router
 from routes.public_route import router as public_router
@@ -83,12 +83,13 @@ def create_app() -> FastAPI:
     )
 
     # Mount routers
-    app.include_router(auth_router)
-    app.include_router(spotify_router)
-    app.include_router(public_router)
-    app.include_router(friendship_router, tags=["friendship"])
-    app.include_router(recent_router)
-    app.include_router(ignore_router)
-    app.include_router(streaming_router)
-
+    api_router = APIRouter()
+    api_router.include_router(auth_router)
+    api_router.include_router(spotify_router)
+    api_router.include_router(public_router)
+    api_router.include_router(friendship_router, tags=["friendship"])
+    api_router.include_router(recent_router)
+    api_router.include_router(ignore_router)
+    api_router.include_router(streaming_router)
+    app.include_router(api_router, prefix=settings.API_PREFIX)
     return app
