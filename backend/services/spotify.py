@@ -4,6 +4,7 @@ import datetime
 import logging
 import os
 import secrets
+from functools import partial
 from typing import Any, AsyncGenerator
 from urllib.parse import urlencode
 from collections import defaultdict
@@ -518,6 +519,33 @@ class Spotify:
                 # we skip all that don't have a track (i.e. shows)
                 if (track := track_data.get("track", {})) and (track.get("id")):
                     yield track_data
+
+    async def get_all_likes(
+        self, *, user: User, db_session: Session
+    ) -> list[dict[str, Any]]:
+        return [
+            like_data
+            for like_data in await self.get_all(
+                user=user,
+                db_session=db_session,
+                request=self.get_liked_page,
+            )
+            if (track := like_data.get("track", {})) and (track.get("id"))
+        ]
+
+    async def get_all_playlist_tracks(
+        self, *, playlist_id: str, user: User, db_session: Session
+    ) -> list[dict[str, Any]]:
+        playlist_request = partial(self.get_playlist_tracks, playlist_id=playlist_id)
+        return [
+            item
+            for item in await self.get_all(
+                user=user,
+                db_session=db_session,
+                request=playlist_request,
+            )
+            if (track := item.get("track", {})) and (track.get("id"))
+        ]
 
     @spotify_retry()
     async def play(

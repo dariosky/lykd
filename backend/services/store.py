@@ -148,6 +148,9 @@ def update_playlist_db(
     for playlist_track in tracks_to_add:
         db.merge(playlist_track)
     if snapshot_id is not None:
+        logger.debug(
+            f"Setting the snapshot {snapshot_id} for the changed playlist {playlist_id}"
+        )
         db.exec(
             update(Playlist)
             .where(Playlist.id == playlist_id)

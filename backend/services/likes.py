@@ -1,6 +1,5 @@
 # Create async tasks for all users
 import datetime
-from functools import partial
 
 from models.auth import User
 from models.music import Like, PlaylistTrack, Play, Playlist
@@ -99,21 +98,20 @@ async def process_likes(db: Session, spotify: Spotify, user: User) -> None:
     if full_scan:
         logger.info(f"Full scan for {user} likes")
         # Fetch all liked songs from Spotify
-        all_spotify_likes = await spotify.get_all(
+        # TODO: Deduplicate likes before full-sync here
+        all_spotify_likes = await spotify.get_all_likes(
             user=user,
             db_session=db,
-            request=spotify.get_liked_page,
         )
         logger.info(f"Processing {len(all_spotify_likes)} liked songs for user {user}:")
 
         all_spotify_likes_ids = {
-            spotify_like.get("track", {}).get("id")
-            for spotify_like in all_spotify_likes
+            spotify_like["track"]["id"] for spotify_like in all_spotify_likes
         }
         new_spotify_likes = [
             spotify_like
             for spotify_like in all_spotify_likes
-            if spotify_like.get("track", {}).get("id") not in all_db_like_ids
+            if spotify_like["track"]["id"] not in all_db_like_ids
         ]
 
         tracks_to_remove = all_db_like_ids - all_spotify_likes_ids
@@ -135,7 +133,7 @@ async def process_likes(db: Session, spotify: Spotify, user: User) -> None:
                 break
 
             new_spotify_likes.append(spotify_like)
-
+        # TODO: Deduplicate likes before quick-sync here
         tracks_to_remove = set()
 
     if new_spotify_likes or tracks_to_remove or full_scan:
@@ -149,14 +147,13 @@ async def process_likes(db: Session, spotify: Spotify, user: User) -> None:
         # DONE: the Spotify playlist has different likes than the DB
         # in the full_scan we should retrieve also the whole playlist to decide what
         # DONE: Don't do a full-scan if the snapshot is unchanged
+        # TODO: Harden the sync and write tests
         if playlist.snapshot_id != spotify_playlist.get("snapshot_id"):
             logger.debug(f"Full scan to sync playlist {playlist.name}")
-            playlist_request = partial(
-                spotify.get_playlist_tracks, playlist_id=playlist.id
-            )
+
             logger.debug("Refreshing existing playlist tracks from Spotify")
-            existing_spotify_tracks = await spotify.get_all(
-                user=user, db_session=db, request=playlist_request
+            existing_spotify_tracks = await spotify.get_all_playlist_tracks(
+                playlist_id=playlist.id, user=user, db_session=db
             )
             existing_tracks_ids = {
                 item.get("track", {}).get("id") for item in existing_spotify_tracks
