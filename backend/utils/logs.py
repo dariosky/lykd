@@ -27,10 +27,12 @@ def time_it(func):
 
 
 def setup_logs():
-    # logging.captureWarnings(True)
     warnings.simplefilter("default")
     logging.getLogger("lykd").setLevel(logging.DEBUG)
-    logging.basicConfig()
+    logging.basicConfig(
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
 
 
 def humanize_milliseconds(elapsed):

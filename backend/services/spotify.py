@@ -152,7 +152,6 @@ class Spotify:
             user=user,
             db_session=db_session,
             url=url,
-            headers=self.get_headers(user),
             params=params,
         )
 
@@ -306,7 +305,7 @@ class Spotify:
     ) -> None:
         logger.info(f"Deleting playlist {playlist_id} for {user}")
         url = f"https://api.spotify.com/v1/playlists/{playlist_id}/followers"
-        response = await self.request(
+        await self.request(
             "DELETE",
             user=user,
             db_session=db_session,
@@ -457,7 +456,7 @@ class Spotify:
             payload["uris"] = [get_uri(u) if ":" not in u else u for u in uris]
         if position_ms is not None:
             payload["position_ms"] = position_ms
-        response = await self.request(
+        await self.request(
             "PUT",
             user=user,
             db_session=db_session,
@@ -469,7 +468,7 @@ class Spotify:
 
     async def pause(self, *, user: User, db_session: Session) -> None:
         url = "https://api.spotify.com/v1/me/player/pause"
-        response = await self.request(
+        await self.request(
             "PUT",
             user=user,
             db_session=db_session,
@@ -479,7 +478,7 @@ class Spotify:
 
     async def next(self, *, user: User, db_session: Session) -> None:
         url = "https://api.spotify.com/v1/me/player/next"
-        response = await self.request(
+        await self.request(
             "POST",
             user=user,
             db_session=db_session,
@@ -492,7 +491,7 @@ class Spotify:
     ) -> None:
         url = "https://api.spotify.com/v1/me/player"
         payload = {"device_ids": [device_id], "play": play}
-        response = await self.request(
+        await self.request(
             "PUT",
             user=user,
             db_session=db_session,
@@ -553,7 +552,7 @@ class Spotify:
                         "added_at": liked_at.isoformat(),
                     }
                 ]
-            response = await self.request(
+            await self.request(
                 "PUT",
                 user=user,
                 db_session=db_session,
@@ -561,7 +560,7 @@ class Spotify:
                 params=params,
             )
         else:
-            response = await self.request(
+            await self.request(
                 "DELETE",
                 user=user,
                 db_session=db_session,
