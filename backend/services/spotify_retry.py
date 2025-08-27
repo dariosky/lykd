@@ -110,28 +110,12 @@ def before_sleep_log_concise(logger, log_level):
         fn_name = retry_state.fn.__qualname__
         exception = retry_state.outcome.exception() if retry_state.outcome else None
         if exception:
-            # Try to extract status code, method, and URL if present
+            # Extract status code if present
             status_code = getattr(exception, "status_code", None)
-            detail = getattr(exception, "detail", "")
-            method = None
-            url = None
-            # Try to parse method and URL from detail string
-            if detail:
-                import re
-
-                match = re.search(
-                    r"(GET|POST|PUT|DELETE|PATCH) (https?://[^ ]+)", detail
-                )
-                if match:
-                    method, url = match.group(1), match.group(2)
             exc_type = type(exception).__name__
             msg = f"Retrying {fn_name} in {wait_str} as it raised {exc_type}:"
             if status_code:
-                msg += f" {status_code}:"
-            if method and url:
-                msg += f" {method} {url} failed"
-            else:
-                msg += f" {str(exception)}"
+                msg += f" {status_code}"
         else:
             msg = f"Retrying {fn_name} in {wait_str}"
         logger.log(log_level, msg)

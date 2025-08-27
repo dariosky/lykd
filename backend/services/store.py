@@ -1,4 +1,4 @@
-from sqlmodel import Session, delete, select, update, func
+from sqlmodel import Session, delete, select, update
 
 from models.auth import User
 from models.music import (
@@ -15,7 +15,6 @@ from models.music import (
 import logging
 
 from utils.dates import parse_date
-from sqlalchemy import text
 
 logger = logging.getLogger("lykd.store")
 
@@ -182,84 +181,3 @@ def find_missing_tracks(session: Session):
     )
     missing_ids = set(session.exec(query).all())
     return missing_ids
-
-
-def remove_duplicates(db: Session):
-    """Remove duplicate likes keeping the oldest per (user_id, track_id).
-
-    Returns a list of tuples (user_id, track_id, count, oldest_date) describing
-    the duplicate groups that were found prior to deletion.
-    """
-    dup_query = (
-        select(
-            Like.user_id,
-            Like.track_id,
-            func.count().label("count"),
-            func.min(Like.date).label("oldest_date"),
-        )
-        .group_by(Like.user_id, Like.track_id)
-        .having(func.count() > 1)
-    )
-    duplicates = db.exec(dup_query).all()
-    logger.info(f"Removing {len(duplicates)} duplicate tracks")
-
-    # Use a deterministic window function to delete all but one row per group.
-    # This handles ties on date by using a stable secondary tiebreaker.
-    dialect = db.get_bind().dialect.name
-    if dialect == "sqlite":
-        db.exec(
-            text(
-                """
-                WITH ranked AS (
-                    SELECT rowid AS rid,
-                           user_id,
-                           track_id,
-                           date,
-                           ROW_NUMBER() OVER (
-                               PARTITION BY user_id, track_id
-                               ORDER BY date ASC, rowid ASC
-                           ) AS rn
-                    FROM likes
-                )
-                DELETE FROM likes
-                WHERE rowid IN (
-                    SELECT rid FROM ranked WHERE rn > 1
-                );
-                """
-            )
-        )
-    elif dialect in ("postgresql", "postgres"):
-        db.exec(
-            text(
-                """
-                WITH ranked AS (
-                    SELECT ctid,
-                           user_id,
-                           track_id,
-                           date,
-                           ROW_NUMBER() OVER (
-                               PARTITION BY user_id, track_id
-                               ORDER BY date ASC, ctid ASC
-                           ) AS rn
-                    FROM likes
-                )
-                DELETE FROM likes l
-                USING ranked r
-                WHERE l.ctid = r.ctid AND r.rn > 1;
-                """
-            )
-        )
-    else:
-        # Generic fallback: remove rows strictly newer than the min(date) as before.
-        # This may leave duplicates if dates are exactly equal on unsupported dialects.
-        for user_id, track_id, _count, oldest_date in duplicates:
-            db.exec(
-                delete(Like).where(
-                    Like.user_id == user_id,
-                    Like.track_id == track_id,
-                    Like.date > oldest_date,
-                )
-            )
-
-    db.commit()
-    return duplicates

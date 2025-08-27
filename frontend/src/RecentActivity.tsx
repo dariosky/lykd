@@ -82,7 +82,7 @@ export function RecentPlayItem({
     } catch (err) {
       const msg = (err as Error)?.message || "Failed to start playback";
       const noDevice = /no active device/i.test(msg);
-      if (!noDevice || !isPremium) {
+      if (!noDevice) {
         alert(msg);
         return;
       }
@@ -133,13 +133,15 @@ export function RecentPlayItem({
           ) : (
             <div className="recent-avatar placeholder">🎵</div>
           )}
-          <button
-            className="play-overlay"
-            aria-label="Play"
-            onClick={onPlayClick}
-          >
-            ▶
-          </button>
+          {isPremium && (
+            <button
+              className="play-overlay"
+              aria-label="Play"
+              onClick={onPlayClick}
+            >
+              ▶
+            </button>
+          )}
         </div>
       </div>
       <div className="recent-main">
