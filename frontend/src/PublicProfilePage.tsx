@@ -290,90 +290,90 @@ export default function PublicProfilePage() {
               </div>
             </div>
           </section>
-
-          <section className="card">
-            <h2>🔥 Top Highlights</h2>
-            <div className="highlights-grid">
-              <div className="highlight">
-                <div className="highlight-title">📆 Top songs (30 days)</div>
-                <ul className="list">
-                  {(data?.highlights?.top_songs_30_days ?? []).map((it) => (
-                    <li
-                      key={`${it.user.id}-${it.track.id}-${it.date}`}
-                      className="list-item"
-                    >
-                      <div className="list-main track-cell">
-                        <RecentPlayItem
-                          item={it}
-                          userLinkBase="/likes"
-                          source="profile"
-                        />
-                      </div>
-                      <div className="list-meta">
-                        <IgnoreTrackButton
-                          trackId={it.track.id}
-                          className="profile-ignore-btn"
-                        />
-                      </div>
-                    </li>
-                  ))}
-                  {(data?.highlights?.top_songs_30_days ?? []).length === 0 && (
-                    <li className="list-empty">No data</li>
-                  )}
-                </ul>
+          {data?.user?.is_friend && (
+            <section className="card">
+              <h2>🔥 Top Highlights</h2>
+              <div className="highlights-grid">
+                <div className="highlight">
+                  <div className="highlight-title">📆 Top songs (30 days)</div>
+                  <ul className="list">
+                    {(data?.highlights?.top_songs_30_days ?? []).map((it) => (
+                      <li
+                        key={`${it.user.id}-${it.track.id}-${it.date}`}
+                        className="list-item"
+                      >
+                        <div className="list-main track-cell">
+                          <RecentPlayItem
+                            item={it}
+                            userLinkBase="/likes"
+                            source="profile"
+                          />
+                        </div>
+                        <div className="list-meta">
+                          <IgnoreTrackButton
+                            trackId={it.track.id}
+                            className="profile-ignore-btn"
+                          />
+                        </div>
+                      </li>
+                    ))}
+                    {(data?.highlights?.top_songs_30_days ?? []).length ===
+                      0 && <li className="list-empty">No data</li>}
+                  </ul>
+                </div>
+                <div className="highlight">
+                  <div className="highlight-title">🏆 Top songs (all time)</div>
+                  <ul className="list">
+                    {(data?.highlights?.top_songs_all_time ?? []).map((it) => (
+                      <li
+                        key={`${it.user.id}-${it.track.id}-${it.date}`}
+                        className="list-item"
+                      >
+                        <div className="list-main track-cell">
+                          <RecentPlayItem
+                            item={it}
+                            userLinkBase="/likes"
+                            source="profile"
+                          />
+                        </div>
+                        <div className="list-meta">
+                          <IgnoreTrackButton
+                            trackId={it.track.id}
+                            className="profile-ignore-btn"
+                          />
+                        </div>
+                      </li>
+                    ))}
+                    {(data?.highlights?.top_songs_all_time ?? []).length ===
+                      0 && <li className="list-empty">No data</li>}
+                  </ul>
+                </div>
+                <div className="highlight">
+                  <div className="highlight-title">🌟 Top artists</div>
+                  <ul className="list">
+                    {(data?.highlights?.top_artists ?? []).map((a) => (
+                      <li key={a.artist_id} className="list-item">
+                        <div className="list-main">
+                          <div className="list-title">🎤 {a.name}</div>
+                        </div>
+                        <div className="list-meta">
+                          ▶️ {formatNumber(a.play_count)} plays
+                          <IgnoreArtistButton
+                            artistId={a.artist_id}
+                            artistName={a.name}
+                            className="profile-ignore-btn"
+                          />
+                        </div>
+                      </li>
+                    ))}
+                    {(data?.highlights?.top_artists ?? []).length === 0 && (
+                      <li className="list-empty">No data</li>
+                    )}
+                  </ul>
+                </div>
               </div>
-              <div className="highlight">
-                <div className="highlight-title">🏆 Top songs (all time)</div>
-                <ul className="list">
-                  {(data?.highlights?.top_songs_all_time ?? []).map((it) => (
-                    <li
-                      key={`${it.user.id}-${it.track.id}-${it.date}`}
-                      className="list-item"
-                    >
-                      <div className="list-main track-cell">
-                        <RecentPlayItem
-                          item={it}
-                          userLinkBase="/likes"
-                          source="profile"
-                        />
-                      </div>
-                      <div className="list-meta">
-                        <IgnoreTrackButton
-                          trackId={it.track.id}
-                          className="profile-ignore-btn"
-                        />
-                      </div>
-                    </li>
-                  ))}
-                  {(data?.highlights?.top_songs_all_time ?? []).length ===
-                    0 && <li className="list-empty">No data</li>}
-                </ul>
-              </div>
-              <div className="highlight">
-                <div className="highlight-title">🌟 Top artists</div>
-                <ul className="list">
-                  {(data?.highlights?.top_artists ?? []).map((a) => (
-                    <li key={a.artist_id} className="list-item">
-                      <div className="list-main">
-                        <div className="list-title">🎤 {a.name}</div>
-                      </div>
-                      <div className="list-meta">
-                        ▶️ {formatNumber(a.play_count)} plays
-                        <IgnoreArtistButton
-                          artistId={a.artist_id}
-                          artistName={a.name}
-                          className="profile-ignore-btn"
-                        />
-                      </div>
-                    </li>
-                  ))}
-                  {(data?.highlights?.top_artists ?? []).length === 0 && (
-                    <li className="list-empty">No data</li>
-                  )}
-                </ul>
-              </div>
-            </div>
-          </section>
+            </section>
+          )}
         </div>
       )}
     </div>

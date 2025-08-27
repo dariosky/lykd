@@ -42,6 +42,7 @@ export interface PublicProfileResponse {
     username: string;
     picture: string | null;
     join_date: string;
+    is_friend: boolean;
   };
   stats: {
     total_plays: number;
