@@ -276,5 +276,6 @@ async def import_spotify_extended_history(
 
     # Schedule background processing
     background_tasks.add_task(process_spotify_history_zip, user, tmp_zip)
+    slack.send_message(f"⏳ User {user} processed the full history")
 
     return {"message": "Import started"}
