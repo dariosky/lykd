@@ -1,15 +1,12 @@
-import React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
-import { apiService, ApiStatus, queryKeys, UserResponse } from "./api";
+import { apiService, ApiStatus, queryKeys } from "./api";
 import Homepage from "./Homepage";
 import Dashboard from "./Dashboard";
 import "./App.css";
 import { Footer } from "./Footer.tsx";
+import { useAuth } from "./AuthContext";
 
 function App() {
-  const navigate = useNavigate();
-
   // Backend status query with 5-second stale time
   const {
     data: apiStatus,
@@ -23,25 +20,7 @@ function App() {
     retry: 2,
   });
 
-  // Current user query
-  const { data: userResponse, isLoading: isUserLoading } = useQuery<
-    UserResponse,
-    Error
-  >({
-    queryKey: queryKeys.currentUser,
-    queryFn: apiService.getCurrentUser,
-    staleTime: 30 * 1000, // 30 seconds
-    retry: 1, // Don't retry too much for user info
-  });
-
-  // Show error page for API failures
-  React.useEffect(() => {
-    if (error) {
-      navigate(`/error?type=api&message=${encodeURIComponent(error.message)}`);
-    }
-  }, [error, navigate]);
-
-  const currentUser = userResponse?.user;
+  const { isLoggedIn, loading: isUserLoading } = useAuth();
 
   // Show loading state while checking authentication
   if (isUserLoading) {
@@ -54,7 +33,7 @@ function App() {
   }
 
   // If user is not logged in, show Homepage (without footer here)
-  if (!currentUser) {
+  if (!isLoggedIn) {
     return <Homepage />;
   }
 

@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { AuthProvider } from "./AuthContext";
 import App from "./App";
 
 // Helper to render with providers
@@ -11,15 +12,17 @@ function renderWithProviders(ui: React.ReactNode) {
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter
-        initialEntries={["/"]}
-        future={{
-          v7_relativeSplatPath: true,
-          v7_startTransition: true,
-        }}
-      >
-        {ui}
-      </MemoryRouter>
+      <AuthProvider>
+        <MemoryRouter
+          initialEntries={["/"]}
+          future={{
+            v7_relativeSplatPath: true,
+            v7_startTransition: true,
+          }}
+        >
+          {ui}
+        </MemoryRouter>
+      </AuthProvider>
     </QueryClientProvider>,
   );
 }

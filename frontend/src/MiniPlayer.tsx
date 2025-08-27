@@ -13,6 +13,8 @@ interface PlaybackItem {
   durationMs: number;
 }
 
+const FETCH_STATE_EVERY_MS = 10000;
+
 export function MiniPlayer() {
   const [state, setState] = React.useState<{
     isPlaying: boolean;
@@ -138,7 +140,10 @@ export function MiniPlayer() {
     (async () => {
       await fetchStateIfLoggedIn();
       if (!cancelled) {
-        intervalId = window.setInterval(fetchStateIfLoggedIn, 5000);
+        intervalId = window.setInterval(
+          fetchStateIfLoggedIn,
+          FETCH_STATE_EVERY_MS,
+        );
       }
     })();
     return () => {
