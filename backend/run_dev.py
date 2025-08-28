@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Development server runner for LYKD backend"""
 
+import setproctitle
 import uvicorn
 
+setproctitle.setproctitle("Lykd DEV API")
 if __name__ == "__main__":  # pragma: no cover
     uvicorn.run(
         "app:create_app",
