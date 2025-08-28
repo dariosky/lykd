@@ -20,6 +20,7 @@ dependencies = [
     "python-multipart>=0.0.20",
     "expiringdict>=1.2.2",
     "websockets>=15.0.1",
+    "setproctitle>=1.3.6",
 ]
 
 [dependency-groups]
@@ -70,3 +71,4 @@ exclude_lines = [
 [tool.bandit]
 exclude_dirs = ["*/tests/*", "/influx_client.py", ".venv"]
 skips = ["B110"]
+

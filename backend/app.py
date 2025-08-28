@@ -4,6 +4,8 @@ import tomllib
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import setproctitle
+
 import settings
 from brotli_asgi import BrotliMiddleware
 from fastapi import FastAPI, APIRouter
@@ -24,6 +26,7 @@ from utils import setup_logs
 
 logger = logging.getLogger("lykd.main")
 setup_logs()
+setproctitle.setproctitle("Lykd API")
 
 
 def get_version() -> str:
