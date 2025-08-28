@@ -17,7 +17,7 @@ def get_version() -> str:
     return pyproject["project"]["version"]
 
 
-@router.get("/")
+@router.api_route("/", methods=["GET", "HEAD"])
 async def index():
     return {"version": get_version(), "status": "ok"}
 
