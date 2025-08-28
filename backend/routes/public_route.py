@@ -323,7 +323,7 @@ def build_tracking_since_stmt(user_id: str):
 async def get_public_profile(
     username: str,
     db: Session = Depends(get_session),
-    viewer: User = Depends(get_current_user),
+    viewer: User | None = Depends(get_current_user),
 ):
     # Find user by username
     user = db.exec(select(User).where(User.username == username)).first()
@@ -334,8 +334,11 @@ async def get_public_profile(
         viewer_id = user.id
     else:
         viewer_id = viewer.id
-    current_friends = get_friends(db, viewer)
-    is_friend = user in current_friends or user == viewer
+    if viewer is None:
+        is_friend = False
+    else:
+        current_friends = get_friends(db, viewer)
+        is_friend = user in current_friends or user == viewer
 
     user_info = {
         "id": user.id,

@@ -1,6 +1,8 @@
 """Integration tests for public route endpoints."""
 
 from datetime import datetime, timezone, timedelta
+
+from models import Friendship, FriendshipStatus
 from models.auth import User
 from models.music import (
     Play,
@@ -82,14 +84,9 @@ class TestPublicRouteIntegration:
         assert stats["total_likes"] == 1  # Only track1 like
         assert stats["total_listening_time_sec"] == 600  # Only track1 duration * 3
 
-        # Top tracks should only include non-ignored
-        top_tracks_30 = data["highlights"]["top_songs_30_days"]
-        assert len(top_tracks_30) == 1
-        assert top_tracks_30[0]["track"]["id"] == track1.id
-
-        top_tracks_all = data["highlights"]["top_songs_all_time"]
-        assert len(top_tracks_all) == 1
-        assert top_tracks_all[0]["track"]["id"] == track1.id
+        # Unauthenticated users should not see  highlights
+        assert "top_songs_30_days" not in data["highlights"]
+        assert "top_songs_all_time" not in data["highlights"]
 
     def test_public_profile_with_ignored_artists(self, client, test_session):
         """Test that tracks by ignored artists are excluded."""
@@ -151,12 +148,12 @@ class TestPublicRouteIntegration:
         # Should only count plays from non-ignored artist
         assert data["stats"]["total_plays"] == 2
 
-        # Top artists should only include non-ignored
-        top_artists = data["highlights"]["top_artists"]
-        assert len(top_artists) == 1
-        assert top_artists[0]["artist_id"] == artist1.id
+        # Top artists should not be visible for non-friends
+        assert "top_artists" not in data["highlights"]
 
-    def test_public_profile_with_multiple_artists_per_track(self, client, test_session):
+    def test_public_profile_with_multiple_artists_per_track(
+        self, client, test_session, test_user, auth_override
+    ):
         """Test tracks with multiple artists are handled correctly."""
         # Create test user
         user = User(
@@ -166,6 +163,14 @@ class TestPublicRouteIntegration:
             email="multiartist@example.com",
         )
         test_session.add(user)
+        test_session.add(
+            Friendship(
+                user_low_id=user.id,
+                user_high_id=test_user.id,
+                status=FriendshipStatus.accepted,
+                requested_by_id=user.id,
+            )
+        )  # Make them friends
 
         # Create multiple artists
         artist1 = Artist(id="artist_1", name="Artist One")
@@ -218,6 +223,7 @@ class TestPublicRouteIntegration:
         assert response.status_code == 200
 
         data = response.json()
+        assert data["user"]["is_friend"] is True
 
         # Check that all artists are credited for the plays
         top_artists = data["highlights"]["top_artists"]
@@ -235,7 +241,9 @@ class TestPublicRouteIntegration:
         artist_names = set(track_data["track"]["artists"])
         assert artist_names == {"Artist One", "Artist Two", "Artist Three"}
 
-    def test_public_profile_comprehensive_stats(self, client, test_session):
+    def test_public_profile_comprehensive_stats(
+        self, client, test_session, test_user, auth_override
+    ):
         """Test comprehensive statistics with mixed old and recent data."""
         # Create test user
         user = User(
@@ -245,6 +253,14 @@ class TestPublicRouteIntegration:
             email="comp@example.com",
         )
         test_session.add(user)
+        test_session.add(  # Make them friends
+            Friendship(
+                user_low_id=user.id,
+                user_high_id=test_user.id,
+                status=FriendshipStatus.accepted,
+                requested_by_id=user.id,
+            )
+        )
 
         # Create test data
         artist = Artist(id="comp_artist", name="Comprehensive Artist")
@@ -340,7 +356,9 @@ class TestPublicRouteIntegration:
         # Most played decade should be 1980s
         assert highlights["most_played_decade"] == "1980s"
 
-    def test_public_profile_response_structure(self, client, test_session):
+    def test_public_profile_response_structure(
+        self, client, test_session, test_user, auth_override
+    ):
         """Test that the response has the correct structure and data types."""
         user = User(
             id="test_structure",
@@ -350,6 +368,14 @@ class TestPublicRouteIntegration:
             join_date=datetime(2023, 5, 1, tzinfo=timezone.utc),
         )
         test_session.add(user)
+        test_session.add(  # Make them friends
+            Friendship(
+                user_low_id=user.id,
+                user_high_id=test_user.id,
+                status=FriendshipStatus.accepted,
+                requested_by_id=user.id,
+            )
+        )
         test_session.commit()
 
         response = client.get(f"/user/{user.username}/public")
@@ -368,6 +394,7 @@ class TestPublicRouteIntegration:
             "username",
             "picture",
             "join_date",
+            "is_friend",
         }
         assert isinstance(user_data["id"], str)
         assert isinstance(user_data["name"], str)

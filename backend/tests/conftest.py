@@ -8,10 +8,12 @@ import pytest
 import tempfile
 from unittest.mock import patch
 
-
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel.pool import StaticPool
+
+from routes.deps import get_current_user
 
 BACKEND_DIR = pathlib.Path(__file__).resolve().parents[1]
 if str(BACKEND_DIR) not in sys.path:
@@ -75,7 +77,7 @@ def override_get_session(test_session):
 
 
 @pytest.fixture
-def test_app(override_get_session):
+def test_app(override_get_session) -> FastAPI:
     """Create a test FastAPI application."""
     # Patch update_database to skip migrations in tests
     with patch("app.update_database"):
@@ -136,11 +138,13 @@ def test_user(test_session, test_user_data, test_token_data):
 
 
 @pytest.fixture
-def authenticated_client(client, test_user):
-    """Create an authenticated test client."""
-    # For FastAPI TestClient, we need to manually set cookies or use a different approach
-    # We'll modify the app's session dependency for testing
-    return client
+def auth_override(test_app, test_user):
+    # Override current_user dependency to simulate authenticated user
+    test_app.dependency_overrides[get_current_user] = lambda: test_user
+    try:
+        yield
+    finally:
+        test_app.dependency_overrides.pop(get_current_user, None)
 
 
 @pytest.fixture

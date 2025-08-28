@@ -17,15 +17,14 @@ from models.music import (
     IgnoredArtist,
 )
 from routes.public_route import (
-    build_total_plays_stmt,
     build_top_tracks_all_time_stmt,
-    build_total_likes_stmt,
     build_total_listen_sec_stmt,
     build_monthly_listen_sec_stmt,
     build_top_tracks_last_30_stmt,
     build_top_artists_stmt,
     build_most_played_decade_stmt,
     build_tracking_since_stmt,
+    build_total_stmt,
 )
 
 
@@ -94,7 +93,7 @@ def test_total_plays_uses_index_on_plays(test_session: Session, with_ignored: bo
     test_session.commit()
 
     # Build statement using route builder
-    stmt = build_total_plays_stmt(user.id)
+    stmt = build_total_stmt(Play, user.id)
 
     details = _explain_query_plan(stmt, test_session)
 
@@ -116,7 +115,7 @@ def test_total_likes_uses_index_on_likes(test_session: Session):
     test_session.commit()
 
     # Statement for total likes using route builder
-    stmt = build_total_likes_stmt(user.id)
+    stmt = build_total_stmt(Like, user.id)
 
     details = _explain_query_plan(stmt, test_session)
 

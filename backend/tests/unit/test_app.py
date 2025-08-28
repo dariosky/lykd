@@ -14,6 +14,11 @@ class TestAppEndpoints:
         assert "version" in data
         assert data["status"] == "ok"
 
+    def test_monitoring_with_head(self, client):
+        """Test the index endpoint returns version and status."""
+        response = client.head("/")
+        assert response.status_code == 200
+
     def test_get_current_user_info_unauthenticated(self, client):
         """Test get current user info when not authenticated."""
         response = client.get("/user/me")

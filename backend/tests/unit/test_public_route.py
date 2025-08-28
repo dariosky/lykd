@@ -1,6 +1,8 @@
 """Unit tests for public route endpoints."""
 
 from datetime import datetime, timezone, timedelta
+
+from models import Friendship, FriendshipStatus
 from models.auth import User
 from models.music import Play, Like, Track, TrackArtist, Artist, Album
 
@@ -76,19 +78,14 @@ class TestPublicRouteEndpoints:
         assert response.status_code == 200
 
         data = response.json()
-        stats = data["stats"]
-
-        assert stats["total_plays"] == 0
-        assert stats["total_likes"] == 0
-        assert stats["total_listening_time_sec"] == 0
-        assert stats["listening_time_last_30_days_sec"] == 0
-        assert stats["tracking_since"] is None
-
-        highlights = data["highlights"]
-        assert highlights["top_songs_30_days"] == []
-        assert highlights["top_songs_all_time"] == []
-        assert highlights["top_artists"] == []
-        assert highlights["most_played_decade"] is None
+        assert data["stats"] == {
+            "listening_time_last_30_days_sec": 0,
+            "total_likes": 0,
+            "total_listening_time_sec": 0,
+            "total_plays": 0,
+            "tracking_since": None,
+        }
+        assert data["highlights"] == {"most_played_decade": None}
 
     def test_get_public_profile_with_play_data(self, client, test_session):
         """Test profile with actual play data."""
@@ -156,7 +153,9 @@ class TestPublicRouteEndpoints:
         assert stats["listening_time_last_30_days_sec"] == 240  # 1 play * 4 minutes
         assert stats["tracking_since"] is not None
 
-    def test_get_public_profile_top_tracks_30_days(self, client, test_session):
+    def test_get_public_profile_top_tracks_30_days(
+        self, client, test_session, test_user, auth_override
+    ):
         """Test top tracks for last 30 days."""
         # Create test user
         user = User(
@@ -166,6 +165,14 @@ class TestPublicRouteEndpoints:
             email="top30@example.com",
         )
         test_session.add(user)
+        test_session.add(  # Make them friends
+            Friendship(
+                user_low_id=user.id,
+                user_high_id=test_user.id,
+                status=FriendshipStatus.accepted,
+                requested_by_id=user.id,
+            )
+        )
 
         # Create test data
         artist = Artist(id="artist_top", name="Top Artist")
@@ -208,7 +215,9 @@ class TestPublicRouteEndpoints:
         assert track_data["album"]["name"] == album.name
         assert top_tracks_30[0]["play_count"] == 3
 
-    def test_get_public_profile_top_artists(self, client, test_session):
+    def test_get_public_profile_top_artists(
+        self, client, test_session, test_user, auth_override
+    ):
         """Test top artists functionality."""
         # Create test user
         user = User(
@@ -218,6 +227,14 @@ class TestPublicRouteEndpoints:
             email="artist@example.com",
         )
         test_session.add(user)
+        test_session.add(  # Make them friends
+            Friendship(
+                user_low_id=user.id,
+                user_high_id=test_user.id,
+                status=FriendshipStatus.accepted,
+                requested_by_id=user.id,
+            )
+        )
 
         # Create test artists
         artist1 = Artist(id="artist_1", name="Popular Artist")

@@ -1,18 +1,6 @@
-import pytest
 from sqlmodel import Session
 
 from models.music import Artist, Album, Track, TrackArtist, IgnoredTrack, IgnoredArtist
-from routes.deps import current_user
-
-
-@pytest.fixture
-def auth_override(test_app, test_user):
-    # Override current_user dependency to simulate authenticated user
-    test_app.dependency_overrides[current_user] = lambda: test_user
-    try:
-        yield
-    finally:
-        test_app.dependency_overrides.pop(current_user, None)
 
 
 def create_track_with_artists(

@@ -48,13 +48,13 @@ class CacheService:
         self,
         items: list[Play | Like],
         date_field: str,
-        user: User,
+        user: User | None,
         db: Session,
     ) -> list[dict]:
         track_ids = {t.track_id for t in items}
         user_ids = [user.id] if user else []
         users_map = self.get_users(user_ids + [track.user_id for track in items], db)
-        user_likes = self.get_likes(user, db)
+        user_likes = self.get_likes(user, db) if user else set()
         tracks: Sequence[Track] = db.exec(
             select(Track).where(Track.id.in_(track_ids))
         ).all()
