@@ -337,7 +337,7 @@ class Spotify:
             logger.debug("playlist_change called with no changes; skipping request")
             return None
         url = f"https://api.spotify.com/v1/playlists/{playlist_id}"
-        response = await self.request(
+        await self.request(
             "PUT",
             user=user,
             db_session=db_session,
