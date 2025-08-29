@@ -2,7 +2,7 @@ import React from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { apiService, queryKeys, RecentItem } from "./api";
 import { RecentPlayItem } from "./RecentActivity";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import "./Recent.css";
 
 export default function RecentPlaysPage() {
@@ -96,9 +96,6 @@ export default function RecentPlaysPage() {
   return (
     <div className="recent-page">
       <div className="page-header">
-        <Link to="/" className="back-link">
-          ← Back to Home
-        </Link>
         <div className="title-row">
           <h1 className="page-title">Recent Activity</h1>
           <div className="actions">

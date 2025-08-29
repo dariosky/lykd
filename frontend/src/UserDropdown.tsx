@@ -37,10 +37,9 @@ const UserDropdown: React.FC<UserDropdownProps> = ({
             alt={currentUser.name}
             className="user-avatar-small"
           />
-          <span className="user-name-header">{currentUser.name}</span>
           <svg
-            width="12"
-            height="12"
+            width="20"
+            height="20"
             viewBox="0 0 24 24"
             fill="currentColor"
             className={`dropdown-arrow ${isDropdownOpen ? "open" : ""}`}
@@ -55,6 +54,7 @@ const UserDropdown: React.FC<UserDropdownProps> = ({
       {isDropdownOpen && currentUser && (
         <div className="user-dropdown">
           <div className="dropdown-user-info">
+            <div className="dropdown-name">{currentUser.name}</div>
             <span className="dropdown-email">{currentUser.email}</span>
           </div>
           {/* On mobile, show public profile button in dropdown */}

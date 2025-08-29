@@ -108,9 +108,6 @@ function SettingsPage() {
     return (
       <div className="services-page">
         <div className="services-header">
-          <Link to="../" className="back-link">
-            ← Back to Home
-          </Link>
           <h1>Settings</h1>
         </div>
         <div className="loading">Loading...</div>
@@ -122,9 +119,6 @@ function SettingsPage() {
     return (
       <div className="services-page">
         <div className="services-header">
-          <Link to="../" className="back-link">
-            ← Back to Home
-          </Link>
           <h1>Settings</h1>
         </div>
         <div className="no-user">Please log in to view your settings.</div>
@@ -135,9 +129,6 @@ function SettingsPage() {
   return (
     <div className="services-page">
       <div className="services-header">
-        <Link to="../" className="back-link">
-          ← Back to Home
-        </Link>
         <h1>Settings</h1>
       </div>
 
@@ -147,7 +138,7 @@ function SettingsPage() {
           <form onSubmit={onSaveUsername} className="settings-form">
             <div className="settings-form-row">
               <label htmlFor="username" className="settings-label">
-                Your public profile name:
+                Your public profile name, share your stats with your friends!
               </label>
               <div className="input-row">
                 <span className="input-prefix">@</span>
@@ -188,7 +179,7 @@ function SettingsPage() {
             <div className="settings-actions">
               <button
                 type="submit"
-                className="settings-save"
+                className="primary-button"
                 disabled={updateUsernameMutation.isPending}
               >
                 {updateUsernameMutation.isPending ? "Saving…" : "Save"}
@@ -248,9 +239,11 @@ function SettingsPage() {
           {/* Extended history import shortcut */}
           <div className="service-card-body">
             <p>Import your full streaming history to unlock lifetime stats.</p>
-            <Link to="/spotify/import" className="btn-secondary">
-              Import extended history
-            </Link>
+            <div className="import-link-row">
+              <Link to="/spotify/import" className="import-link">
+                Import extended history &rarr;
+              </Link>
+            </div>
           </div>
         </div>
       </div>

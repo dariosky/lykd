@@ -23,9 +23,6 @@ export default function IgnoredPage() {
   return (
     <div className="ignored-page">
       <div className="ignored-page-header">
-        <Link to="/" className="back-link">
-          ← Back to Home
-        </Link>
         <h1>Ignored Items</h1>
         <p className="ignored-description">
           Manage the tracks and artists you choose to ignore. These items won't

@@ -1,14 +1,14 @@
-import { useParams, Link } from "react-router-dom";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useParams } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   apiService,
-  PublicProfileResponse,
-  NotFoundError,
   FriendshipStatusResponse,
+  NotFoundError,
+  PublicProfileResponse,
   queryKeys,
   UserResponse,
 } from "./api";
-import { IgnoreTrackButton, IgnoreArtistButton } from "./IgnoreButtons";
+import { IgnoreArtistButton, IgnoreTrackButton } from "./IgnoreButtons";
 import "./PublicProfile.css";
 import { formatLocalDate } from "./date";
 import { RecentPlayItem } from "./RecentActivity";
@@ -141,9 +141,6 @@ export default function PublicProfilePage() {
   return (
     <div className="public-profile-page">
       <div className="public-profile-header">
-        <Link to="/" className="back-link">
-          ← Back to Home
-        </Link>
         {isLoading && <div className="loading-small">Loading profile…</div>}
       </div>
 

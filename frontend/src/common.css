@@ -108,3 +108,64 @@
 [title]:hover:after {
   opacity: 1;
 }
+
+/* Primary button style for default actions */
+.primary-button {
+  background: linear-gradient(90deg, #ff4b4b 0%, #d62828 100%);
+  color: #fff;
+  font-weight: 600;
+  border: none;
+  border-radius: 6px;
+  padding: 0.6em 1.6em;
+  font-size: 1rem;
+  box-shadow: 0 2px 8px rgba(255, 75, 75, 0.15);
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    box-shadow 0.2s;
+}
+
+.primary-button:hover:not(:disabled) {
+  background: linear-gradient(90deg, #d62828 0%, #ff4b4b 100%);
+  box-shadow: 0 4px 12px rgba(255, 75, 75, 0.25);
+}
+
+.primary-button:disabled {
+  background: #ffb3b3;
+  color: #eee;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.import-link-row {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: 0.5em;
+}
+
+.import-link {
+  color: #d62828;
+  text-decoration: underline;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: color 0.2s;
+}
+.import-link:hover {
+  color: #ff4b4b;
+  text-decoration: underline;
+}
+
+.service-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.service-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}

@@ -429,3 +429,9 @@
 .import-link:hover {
   text-decoration: underline;
 }
+
+.full-width {
+  width: 100%;
+  display: block;
+  box-sizing: border-box;
+}
