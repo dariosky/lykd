@@ -18,7 +18,6 @@ const UserDropdown: React.FC<UserDropdownProps> = ({
   currentUser,
   isDropdownOpen,
   setIsDropdownOpen,
-  isMobile,
   handlePublicProfileClick,
   handleSettingsClick,
   handleIgnoredClick,
@@ -58,30 +57,25 @@ const UserDropdown: React.FC<UserDropdownProps> = ({
             <span className="dropdown-email">{currentUser.email}</span>
           </div>
           {/* On mobile, show public profile button in dropdown */}
-          {isMobile && (
-            <button
-              className="dropdown-item"
-              onClick={handlePublicProfileClick}
+          <button className="dropdown-item" onClick={handlePublicProfileClick}>
+            {/* Outlined world SVG */}
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             >
-              {/* Outlined world SVG */}
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <path d="M2 12h20" />
-                <path d="M12 2a15.3 15.3 0 0 1 0 20" />
-                <path d="M12 2a15.3 15.3 0 0 0 0 20" />
-              </svg>
-              Public Profile
-            </button>
-          )}
+              <circle cx="12" cy="12" r="10" />
+              <path d="M2 12h20" />
+              <path d="M12 2a15.3 15.3 0 0 1 0 20" />
+              <path d="M12 2a15.3 15.3 0 0 0 0 20" />
+            </svg>
+            Your Stats Profile
+          </button>
           <div className="dropdown-divider"></div>
           <button className="dropdown-item" onClick={handleSettingsClick}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">

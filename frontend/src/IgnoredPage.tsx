@@ -1,11 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
-import { apiService, queryKeys, IgnoredListResponse } from "./api";
+import { apiService, IgnoredListResponse, queryKeys } from "./api";
 import {
-  UnignoreArtistButton,
-  UnignoreTrackButton,
   ReportArtistButton,
   ReportTrackButton,
+  UnignoreArtistButton,
+  UnignoreTrackButton,
 } from "./IgnoreButtons";
 import "./IgnoredPage.css";
 

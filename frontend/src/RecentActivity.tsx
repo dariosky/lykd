@@ -7,24 +7,6 @@ import { Link } from "react-router-dom";
 import { ensureWebPlaybackDevice } from "./spotifyWeb";
 import { emit } from "./playbackBus";
 
-export function useLocalStorageBoolean(key: string, initial: boolean) {
-  const [value, setValue] = React.useState<boolean>(() => {
-    try {
-      const raw = localStorage.getItem(key);
-      if (raw === null) return initial;
-      return raw === "true";
-    } catch {
-      return initial;
-    }
-  });
-  React.useEffect(() => {
-    try {
-      localStorage.setItem(key, value ? "true" : "false");
-    } catch {}
-  }, [key, value]);
-  return [value, setValue] as const;
-}
-
 export function RecentPlayItem({
   item,
   userLinkBase = "/recent",
@@ -272,52 +254,6 @@ export function RecentActivityWidget({
       )}
       {items.length === 0 && status === "success" && (
         <div className="recent-empty">No recent activity yet.</div>
-      )}
-    </div>
-  );
-}
-
-export function SettingsDropdown({
-  includeMe,
-  setIncludeMe,
-}: {
-  includeMe: boolean;
-  setIncludeMe: (v: boolean) => void;
-}) {
-  const [open, setOpen] = React.useState(false);
-  React.useEffect(() => {
-    const onDoc = (e: MouseEvent) => {
-      const t = e.target as Element;
-      if (!t.closest(".recent-settings")) setOpen(false);
-    };
-    if (open) {
-      document.addEventListener("click", onDoc);
-      return () => document.removeEventListener("click", onDoc);
-    }
-  }, [open]);
-
-  return (
-    <div className="recent-settings">
-      <button
-        className="recent-gear"
-        onClick={() => setOpen((o) => !o)}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        title="Recent settings"
-      >
-        ⚙️
-      </button>
-      {open && (
-        <div className="recent-menu" role="menu">
-          <label className="recent-menu-item">
-            <input
-              type="checkbox"
-              checked={includeMe}
-              onChange={(e) => setIncludeMe(e.target.checked)}
-            />
-            <span>Show my activity</span>
-          </label>
-        </div>
       )}
     </div>
   );

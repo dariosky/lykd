@@ -11,7 +11,7 @@ from fastapi import FastAPI, APIRouter
 from routes.auth_route import router as auth_router
 from routes.public_route import router as public_router
 from routes.spotify_route import router as spotify_router
-from routes.friendship import router as friendship_router
+from routes.friendship_route import router as friendship_router
 from routes.recent_route import router as recent_router
 from routes.ignore_route import router as ignore_router
 from routes.spotify_streaming import router as streaming_router

@@ -225,17 +225,6 @@ function Layout({ children }: LayoutProps) {
           </div>
 
           <div className="header-actions">
-            {/* Public profile button: only show in header if not mobile */}
-            {currentUser?.username && !isMobile && (
-              <button
-                className="public-profile-button"
-                onClick={handlePublicProfileClick}
-                title="Your public profile stats"
-              >
-                🌎
-              </button>
-            )}
-
             {/* Notifications bell */}
             <div className="notif-dropdown-container">
               {pending.length > 0 && (

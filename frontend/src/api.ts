@@ -117,6 +117,23 @@ export interface PendingRequestsResponse {
   pending: PendingRequestItem[];
 }
 
+export interface FriendsListResponse {
+  friends: Array<{
+    id: string;
+    username: string;
+    picture: string | null;
+    likes: number;
+    last_play: string | null;
+  }>;
+  pending: Array<{
+    id: string;
+    username: string;
+    picture: string | null;
+    status: string;
+    requested_at: string | null;
+  }>;
+}
+
 // Ignored items
 export interface IgnoredTrackItem {
   track_id: string;
@@ -675,6 +692,17 @@ export const apiService = {
     if (!response.ok) {
       const text = await response.text();
       throw new Error(`Upload failed: ${response.status} ${text}`);
+    }
+    return response.json();
+  },
+
+  // Get friends list
+  getFriendsList: async (): Promise<FriendsListResponse> => {
+    const response = await fetch("/api/friendship/list", {
+      credentials: "include",
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to fetch friends list: ${response.status}`);
     }
     return response.json();
   },

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from models.auth import User
 from models.common import get_session
 from models.friendship import Friendship, FriendshipStatus
+from models.music import Like, Play
 from routes.deps import current_user
 from services.friendship import (
     accept_friendship as svc_accept_friendship,
@@ -209,3 +210,80 @@ def get_friends(session: Session, user: User) -> list[User]:
         for fr in friendships
     ]
     return list(session.exec(select(User).where(User.id.in_(friends_ids))).all())
+
+
+@router.get("/list")
+async def list_friends_and_pending(
+    session: Session = Depends(get_session),
+    user: User | None = Depends(current_user),
+):
+    from sqlalchemy import func, or_ as sa_or
+
+    # Single query for accepted friends
+    stmt = (
+        select(
+            User.id,
+            User.username,
+            User.picture,
+            func.count(Like.track_id).label("likes"),
+            func.max(Play.date).label("last_play"),
+        )
+        .select_from(Friendship)
+        .join(
+            User,
+            sa_or(User.id == Friendship.user_low_id, User.id == Friendship.user_high_id)
+            & (User.id != user.id),
+        )
+        .outerjoin(Like, Like.user_id == User.id)
+        .outerjoin(Play, Play.user_id == User.id)
+        .where(
+            sa_or(
+                Friendship.user_low_id == user.id, Friendship.user_high_id == user.id
+            ),
+            Friendship.status == FriendshipStatus.accepted,
+        )
+        .group_by(User.id, User.username, User.picture)
+    )
+    friends = []
+    for row in session.exec(stmt):
+        friends.append(
+            {
+                "id": row.id,
+                "username": row.username,
+                "picture": row.picture,
+                "likes": row.likes,
+                "last_play": row.last_play.isoformat() if row.last_play else None,
+            }
+        )
+    # Pending requests logic unchanged
+    pending = []
+    pending_friendships = session.exec(
+        select(Friendship).where(
+            sa_or(
+                Friendship.user_low_id == user.id, Friendship.user_high_id == user.id
+            ),
+            Friendship.status == FriendshipStatus.pending,
+        )
+    ).all()
+    for fr in pending_friendships:
+        other_id = fr.user_high_id if user.id == fr.user_low_id else fr.user_low_id
+        other = session.get(User, other_id)
+        if not other:
+            continue
+        status = (
+            "pending_outgoing" if fr.requested_by_id == user.id else "pending_incoming"
+        )
+        pending.append(
+            {
+                "id": other.id,
+                "username": other.username,
+                "picture": other.picture,
+                "status": status,
+                "requested_at": fr.requested_at.isoformat()
+                if hasattr(fr, "requested_at") and fr.requested_at
+                else None,
+            }
+        )
+    friends.sort(key=lambda x: x["username"])
+    pending.sort(key=lambda x: x["requested_at"] or "", reverse=True)
+    return {"friends": friends, "pending": pending}

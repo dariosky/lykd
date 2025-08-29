@@ -20,7 +20,7 @@ from models.music import (
 )
 from models.common import get_session
 from routes.deps import get_current_user
-from routes.friendship import get_friends
+from routes.friendship_route import get_friends
 from services.cache import cache
 
 router = APIRouter()

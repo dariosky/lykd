@@ -19,7 +19,7 @@ from models.music import (
     Like,
 )
 from routes.deps import current_user, parse_ui_date, date_range_for_token
-from routes.friendship import get_friends
+from routes.friendship_route import get_friends
 from services.cache import cache
 from services.spotify import get_spotify_client, Spotify
 
