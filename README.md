@@ -1,11 +1,19 @@
 <div align="center">
-  <img src="frontend/public/lykd.svg" alt="LYKD Logo" width="200" height="200">
+  <img src="frontend/public/logo.svg" alt="LYKD Logo" width="200" height="200">
 </div>
 
 # LYKD - Your Likes Made Social
 
 LYKD is a web application that makes your music likes social.
 This project is a continuation and evolution of the previous [Spotlike](https://github.com/dariosky/spotlike) script by the same author, now rebuilt as a full-stack web application.
+
+This is still a work in progress - but it's usable and available at [lykd.it](https://lykd.it).
+
+<p style="text-align: center">
+  <img src="frontend/public/screenshots/homepage.png" width="100" />
+  <img src="frontend/public/screenshots/dashboard.png" width="100" />
+<img src="frontend/public/screenshots/stats.png" width="100" />
+</p>
 
 ## Project Structure
 

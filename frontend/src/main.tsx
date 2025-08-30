@@ -44,6 +44,10 @@ function LayoutRoute() {
     </Layout>
   );
 }
+// Add demo mode class to body if VITE_DEMO=1
+if (import.meta.env.VITE_DEMO === "1") {
+  document.body.classList.add("demo");
+}
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

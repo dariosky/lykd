@@ -402,3 +402,10 @@
   width: 28px;
   height: 28px;
 }
+
+/* Demo class styles */
+.demo .recent-user {
+  filter: blur(0.35em);
+  pointer-events: none;
+  user-select: none;
+}
