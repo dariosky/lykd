@@ -25,7 +25,10 @@ export function RecentFriendsWidget() {
   const publicUrl = `/user/${encodeURIComponent(username)}`;
   const [copied, setCopied] = useState(false);
 
-  const friendsCount = data?.friends?.length ?? 0;
+  // Only count/display friends with status === "accepted"
+  const acceptedFriends =
+    data?.friends?.filter((f) => f.status === "accepted") ?? [];
+  const friendsCount = acceptedFriends.length;
 
   const handleCopy = () => {
     navigator.clipboard

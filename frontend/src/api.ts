@@ -124,13 +124,7 @@ export interface FriendsListResponse {
     picture: string | null;
     likes: number;
     last_play: string | null;
-  }>;
-  pending: Array<{
-    id: string;
-    username: string;
-    picture: string | null;
-    status: string;
-    requested_at: string | null;
+    status: "accepted" | "pending" | "declined" | "blocked";
   }>;
 }
 

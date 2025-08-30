@@ -225,6 +225,7 @@ async def list_friends_and_pending(
             User.id,
             User.username,
             User.picture,
+            Friendship.status,
             func.count(Like.track_id).label("likes"),
             func.max(Play.date).label("last_play"),
         )
@@ -234,15 +235,20 @@ async def list_friends_and_pending(
             sa_or(User.id == Friendship.user_low_id, User.id == Friendship.user_high_id)
             & (User.id != user.id),
         )
-        .outerjoin(Like, Like.user_id == User.id)
-        .outerjoin(Play, Play.user_id == User.id)
+        .outerjoin(
+            Like,
+            Like.user_id == User.id & Friendship.status == FriendshipStatus.accepted,
+        )
+        .outerjoin(
+            Play,
+            Play.user_id == User.id & Friendship.status == FriendshipStatus.accepted,
+        )
         .where(
             sa_or(
                 Friendship.user_low_id == user.id, Friendship.user_high_id == user.id
             ),
-            Friendship.status == FriendshipStatus.accepted,
         )
-        .group_by(User.id, User.username, User.picture)
+        .group_by(User.id, User.username, User.picture, Friendship.status)
     )
     friends = []
     for row in session.exec(stmt):
@@ -252,38 +258,9 @@ async def list_friends_and_pending(
                 "username": row.username,
                 "picture": row.picture,
                 "likes": row.likes,
+                "status": row.status,
                 "last_play": row.last_play.isoformat() if row.last_play else None,
             }
         )
-    # Pending requests logic unchanged
-    pending = []
-    pending_friendships = session.exec(
-        select(Friendship).where(
-            sa_or(
-                Friendship.user_low_id == user.id, Friendship.user_high_id == user.id
-            ),
-            Friendship.status == FriendshipStatus.pending,
-        )
-    ).all()
-    for fr in pending_friendships:
-        other_id = fr.user_high_id if user.id == fr.user_low_id else fr.user_low_id
-        other = session.get(User, other_id)
-        if not other:
-            continue
-        status = (
-            "pending_outgoing" if fr.requested_by_id == user.id else "pending_incoming"
-        )
-        pending.append(
-            {
-                "id": other.id,
-                "username": other.username,
-                "picture": other.picture,
-                "status": status,
-                "requested_at": fr.requested_at.isoformat()
-                if hasattr(fr, "requested_at") and fr.requested_at
-                else None,
-            }
-        )
-    friends.sort(key=lambda x: x["username"])
-    pending.sort(key=lambda x: x["requested_at"] or "", reverse=True)
-    return {"friends": friends, "pending": pending}
+
+    return {"friends": friends}
