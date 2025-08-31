@@ -217,9 +217,17 @@ async def list_friends_and_pending(
     session: Session = Depends(get_session),
     user: User | None = Depends(current_user),
 ):
-    from sqlalchemy import func, or_ as sa_or
+    from sqlalchemy import func, or_ as sa_or, and_ as sa_and
+    from models.auth import User
+    from models.friendship import Friendship, FriendshipStatus
 
-    # Single query for accepted friends
+    # Subquery for last_play
+    subquery_last_play = (
+        select(func.max(Play.date))
+        .where(Play.user_id == User.id, Friendship.status == "accepted")
+        .scalar_subquery()
+    )
+
     query = (
         select(
             User.id,
@@ -228,48 +236,65 @@ async def list_friends_and_pending(
             Friendship.status,
             Friendship.requested_by_id,
             func.count(Like.track_id).label("likes"),
-            func.max(Play.date).label("last_play"),
+            subquery_last_play.label("last_play"),
         )
-        .select_from(Friendship)
         .join(
-            User,
-            sa_or(User.id == Friendship.user_low_id, User.id == Friendship.user_high_id)
-            & (User.id != user.id),
+            Friendship,
+            sa_or(
+                Friendship.user_low_id == User.id,
+                Friendship.user_high_id == User.id,
+            ),
         )
         .outerjoin(
             Like,
-            Like.user_id == User.id & Friendship.status == FriendshipStatus.accepted,
-        )
-        .outerjoin(
-            Play,
-            Play.user_id == User.id & Friendship.status == FriendshipStatus.accepted,
+            sa_and(
+                Like.user_id == User.id,
+                Friendship.status == FriendshipStatus.accepted,
+            ),
         )
         .where(
-            Friendship.status.in_(
-                [FriendshipStatus.accepted, FriendshipStatus.pending]
-            ),
-            sa_or(
-                Friendship.user_low_id == user.id, Friendship.user_high_id == user.id
+            sa_and(
+                sa_or(
+                    Friendship.user_low_id == user.id,
+                    Friendship.user_high_id == user.id,
+                ),
+                Friendship.status.in_(
+                    [
+                        FriendshipStatus.accepted,
+                        FriendshipStatus.pending,
+                    ]
+                ),
+                User.id != user.id,
             ),
         )
-        .group_by(User.id)
+        .group_by(
+            User.id,
+            User.username,
+            User.picture,
+            Friendship.status,
+            Friendship.requested_by_id,
+        )
     )
+
     friends = []
-    print(query)
     for row in session.exec(query):
+        friendship = {
+            "id": row.id,
+            "username": row.username,
+            "picture": row.picture,
+        }
         if row.status == FriendshipStatus.pending:
-            status = "requested" if row.requested_by_id == user.id else "pending"
-        else:
-            status = row.status
-        friends.append(
-            {
-                "id": row.id,
-                "username": row.username,
-                "picture": row.picture,
-                "likes": row.likes,
-                "status": status,
-                "last_play": row.last_play.isoformat() if row.last_play else None,
-            }
-        )
+            friendship["status"] = (
+                "requested" if row.requested_by_id == user.id else "pending"
+            )
+        elif row.status == FriendshipStatus.accepted:
+            friendship.update(
+                {
+                    "likes": row.likes,
+                    "last_play": row.last_play.isoformat() if row.last_play else None,
+                    "status": row.status,
+                }
+            )
+        friends.append(friendship)
 
     return {"friends": friends}
