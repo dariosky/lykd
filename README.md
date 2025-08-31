@@ -152,6 +152,8 @@ preferences social and shareable.
 - [x] Send email for friend requests
 - [x] Deploy
 - [ ] Deduplicate and show aliases as liked
+- [ ] Remove play if played for a short time (40%?)
 - [ ] Add suggestions (including songs listened recently)
 - [ ] Sync playlists (include snapshots)
 - [ ] Sync followed artists
+- [ ] Logic for play next song

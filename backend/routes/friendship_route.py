@@ -220,12 +220,13 @@ async def list_friends_and_pending(
     from sqlalchemy import func, or_ as sa_or
 
     # Single query for accepted friends
-    stmt = (
+    query = (
         select(
             User.id,
             User.username,
             User.picture,
             Friendship.status,
+            Friendship.requested_by_id,
             func.count(Like.track_id).label("likes"),
             func.max(Play.date).label("last_play"),
         )
@@ -244,21 +245,29 @@ async def list_friends_and_pending(
             Play.user_id == User.id & Friendship.status == FriendshipStatus.accepted,
         )
         .where(
+            Friendship.status.in_(
+                [FriendshipStatus.accepted, FriendshipStatus.pending]
+            ),
             sa_or(
                 Friendship.user_low_id == user.id, Friendship.user_high_id == user.id
             ),
         )
-        .group_by(User.id, User.username, User.picture, Friendship.status)
+        .group_by(User.id)
     )
     friends = []
-    for row in session.exec(stmt):
+    print(query)
+    for row in session.exec(query):
+        if row.status == FriendshipStatus.pending:
+            status = "requested" if row.requested_by_id == user.id else "pending"
+        else:
+            status = row.status
         friends.append(
             {
                 "id": row.id,
                 "username": row.username,
                 "picture": row.picture,
                 "likes": row.likes,
-                "status": row.status,
+                "status": status,
                 "last_play": row.last_play.isoformat() if row.last_play else None,
             }
         )

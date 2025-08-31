@@ -143,6 +143,7 @@ function Layout({ children }: LayoutProps) {
   };
 
   const handlePublicProfileClick = () => {
+    setIsDropdownOpen(false);
     if (currentUser?.username) {
       navigate(`/user/${currentUser.username}`);
     }

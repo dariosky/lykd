@@ -21,6 +21,7 @@ import Layout from "./Layout";
 import { AuthProvider } from "./AuthContext";
 import "./index.css";
 import "./common.css";
+import NotFoundPage from "./NotFoundPage";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -73,6 +74,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                 element={<Navigate to="/settings" replace />}
               />
               <Route path="/user/:username" element={<PublicProfilePage />} />
+              <Route path="*" element={<NotFoundPage />} />
               <Route path="/error" element={<ErrorPageWrapper />} />
             </Route>
           </Routes>

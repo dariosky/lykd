@@ -117,15 +117,18 @@ export interface PendingRequestsResponse {
   pending: PendingRequestItem[];
 }
 
+export interface FriendshipItem {
+  id: string;
+  username: string;
+  picture: string | null;
+  status: "accepted" | "requested" | "pending";
+  likes: number;
+  last_play: string | null;
+  requested_at?: string;
+}
+
 export interface FriendsListResponse {
-  friends: Array<{
-    id: string;
-    username: string;
-    picture: string | null;
-    likes: number;
-    last_play: string | null;
-    status: "accepted" | "pending" | "declined" | "blocked";
-  }>;
+  friends: FriendshipItem[];
 }
 
 // Ignored items
@@ -699,6 +702,15 @@ export const apiService = {
       throw new Error(`Failed to fetch friends list: ${response.status}`);
     }
     return response.json();
+  },
+
+  // --- Friendship API ---
+  unfriend: async (friendId: string): Promise<void> => {
+    const res = await fetch(`/api/friendship/unfriend/${friendId}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Failed to unfriend");
   },
 };
 
