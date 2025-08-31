@@ -48,7 +48,16 @@ export function RecentFriendsWidget() {
         >
           Friends & Network
         </h2>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <div
+          className="friends"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            cursor: "pointer",
+          }}
+          onClick={() => navigate("/friends")}
+        >
           <svg
             className="friends-icon"
             width="24"

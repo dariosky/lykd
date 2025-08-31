@@ -403,6 +403,103 @@
   height: 28px;
 }
 
+/* --- Friends grid layout --- */
+.friend-header-row {
+  display: grid;
+  grid-template-columns: 60px 1.5fr 1fr 1fr 1.5fr 2fr;
+  align-items: center;
+  font-weight: 600;
+  font-size: 1rem;
+  color: #bbb;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.friend-row {
+  display: grid;
+  grid-template-columns: 60px 1.5fr 1fr 1fr 1.5fr 2fr;
+  align-items: center;
+  min-height: 60px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.friend-cell {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding: 0.25rem 0.5rem;
+}
+.friend-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 1.5rem;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+.friend-username {
+  font-weight: 600;
+  color: #bbb;
+  font-size: 0.95rem;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.friend-stats-link {
+  color: #fff;
+  text-decoration: none;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition:
+    color 0.15s,
+    text-decoration 0.15s;
+}
+.friend-stats-link:hover {
+  color: #4fa3ff;
+  text-decoration: underline;
+}
+.friend-actions-cell {
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+.underline-btn .underline {
+  text-decoration: none;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #bbb;
+  transition:
+    color 0.15s,
+    text-decoration 0.15s;
+}
+.underline-btn:hover .underline {
+  color: #fff;
+  text-decoration: underline;
+}
+.friend-likes {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #e74c3c;
+}
+.friend-date {
+  font-size: 0.95rem;
+  color: #27ae60;
+  font-weight: 500;
+}
+.friend-header {
+  padding: 0 0.5rem;
+  font-size: 0.95rem;
+  color: #bbb;
+}
+.friend-header-actions {
+  text-align: right;
+}
+.friend-row:last-child {
+  border-bottom: none;
+}
+
 /* Demo class styles */
 .demo .recent-user {
   filter: blur(0.35em);

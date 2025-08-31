@@ -76,6 +76,25 @@ const UserDropdown: React.FC<UserDropdownProps> = ({
             </svg>
             Your Stats Profile
           </button>
+          {/* Friends link below Your Stats Profile */}
+          <button
+            className="dropdown-item"
+            onClick={() => {
+              setIsDropdownOpen(false);
+              window.location.href = "/friends";
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff">
+              <circle cx="8" cy="8" r="3"></circle>
+              <circle cx="16" cy="9" r="2.5" opacity="0.85"></circle>
+              <path d="M4 18c0-2.21 1.79-4 4-4s4 1.79 4 4v1H4v-1z"></path>
+              <path
+                d="M13 18c0-1.93 1.57-3.5 3.5-3.5S20 16.07 20 18v1h-7v-1z"
+                opacity="0.85"
+              ></path>
+            </svg>
+            Friends
+          </button>
           <div className="dropdown-divider"></div>
           <button className="dropdown-item" onClick={handleSettingsClick}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
