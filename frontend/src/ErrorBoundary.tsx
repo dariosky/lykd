@@ -100,7 +100,7 @@ export default class ErrorBoundary extends React.Component<
               Reload page
             </button>
           </div>
-          {process.env.NODE_ENV !== "production" && this.state.error && (
+          {import.meta.env.MODE !== "production" && this.state.error && (
             <pre
               style={{
                 marginTop: 12,
