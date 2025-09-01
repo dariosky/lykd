@@ -4,6 +4,7 @@ from models.common import get_session
 from models.friendship import Friendship, FriendshipStatus
 from models.music import Like, Play
 from routes.deps import current_user
+from services.cache import cache
 from services.friendship import (
     accept_friendship as svc_accept_friendship,
 )
@@ -227,6 +228,13 @@ async def list_friends_and_pending(
         .where(Play.user_id == User.id, Friendship.status == "accepted")
         .scalar_subquery()
     )
+    subquery_last_play_track_id = (
+        select(Play.track_id)
+        .where(Play.user_id == User.id, Friendship.status == "accepted")
+        .order_by(Play.date.desc())
+        .limit(1)
+        .scalar_subquery()
+    )
 
     query = (
         select(
@@ -237,6 +245,7 @@ async def list_friends_and_pending(
             Friendship.requested_by_id,
             func.count(Like.track_id).label("likes"),
             subquery_last_play.label("last_play"),
+            subquery_last_play_track_id.label("last_play_track_id"),
         )
         .join(
             Friendship,
@@ -287,11 +296,16 @@ async def list_friends_and_pending(
             friendship["status"] = (
                 "requested" if row.requested_by_id == user.id else "pending"
             )
-        elif row.status == FriendshipStatus.accepted:
+        elif row.status == FriendshipStatus.accepted and row.last_play:
+            last_play = Play(user_id=row.id, track_id=row.last_play_track_id)
+            enriched_tracks = cache.enrich_tracks(
+                [last_play], "date", User(id=row.id), session
+            )
+
             friendship.update(
                 {
                     "likes": row.likes,
-                    "last_play": row.last_play.isoformat() if row.last_play else None,
+                    "last_play": enriched_tracks[0],
                     "status": row.status,
                 }
             )

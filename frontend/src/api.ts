@@ -123,7 +123,7 @@ export interface FriendshipItem {
   picture: string | null;
   status: "accepted" | "requested" | "pending";
   likes: number;
-  last_play: string | null;
+  last_play: RecentItem | null;
   requested_at?: string;
 }
 

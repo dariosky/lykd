@@ -11,6 +11,7 @@ import { useAuth } from "./AuthContext";
 import "./Layout.css";
 import MiniPlayer from "./MiniPlayer";
 import UserDropdown from "./UserDropdown";
+import ErrorBoundary from "./ErrorBoundary";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -427,7 +428,7 @@ function Layout({ children }: LayoutProps) {
         </div>
       </div>
 
-      {children}
+      <ErrorBoundary resetKeys={[location.key]}>{children}</ErrorBoundary>
 
       {/* Mini player fixed in bottom-right */}
       <MiniPlayer />

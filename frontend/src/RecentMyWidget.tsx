@@ -27,6 +27,7 @@ export function RecentMyWidget({ myIdent }: RecentMyWidgetProps) {
           includeMe={true}
           filterUser={myIdent}
           className="compact"
+          showUsername={false}
         />
       </div>
     </div>

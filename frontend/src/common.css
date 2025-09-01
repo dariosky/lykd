@@ -169,3 +169,124 @@
   display: flex;
   align-items: center;
 }
+
+.action-button {
+  cursor: pointer;
+}
+
+/* Friends page table layout */
+.friends-list {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.friend-row {
+  display: grid;
+  grid-template-columns:
+    40px /* avatar */
+    minmax(80px, 1fr) /* username, shrinkable */
+    110px /* link */
+    90px /* likes */
+    minmax(120px, 2.5fr) /* last-play, growable */
+    44px; /* actions */
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.4em 0.2em;
+  border-bottom: 1px solid #222;
+}
+
+.friend-header-row {
+  display: grid;
+  grid-template-columns:
+    40px
+    minmax(80px, 1fr)
+    110px
+    90px
+    minmax(120px, 2.5fr)
+    44px;
+  align-items: center;
+  gap: 0.5em;
+  font-weight: 600;
+  color: #bbb;
+  font-size: 1rem;
+  padding: 0.4em 0.2em;
+  border-bottom: 2px solid #333;
+}
+
+.friend-username-cell {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.friend-lastplay-cell {
+  min-width: 0;
+  overflow: hidden;
+  flex-grow: 2;
+}
+
+.friend-actions-cell {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  position: relative;
+}
+
+/* Dropdown styles */
+.friend-actions-dropdown-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.friend-actions-dropdown-trigger {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 6px;
+  font-size: 1.5em;
+  color: #bbb;
+  transition: color 0.2s;
+}
+
+.friend-actions-dropdown-trigger:hover {
+  color: #fff;
+}
+
+.friend-actions-dropdown {
+  position: absolute;
+  right: 0;
+  top: 120%;
+  min-width: 140px;
+  background: #222;
+  border: 1px solid #444;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  z-index: 10;
+  padding: 0.4em 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dropdown-action-btn {
+  background: none;
+  border: none;
+  color: #eee;
+  text-align: left;
+  font-size: 1em;
+  padding: 0.5em 1em;
+  cursor: pointer;
+  transition:
+    background 0.18s,
+    color 0.18s;
+  border-radius: 6px;
+}
+
+.dropdown-action-btn:hover:not(:disabled) {
+  background: #333;
+  color: #ff4b4b;
+}

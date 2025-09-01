@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiService } from "./api";
-import { formatLocalDateTime } from "./date";
 import { Link } from "react-router-dom";
 import "./Recent.css";
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { RecentPlayItem } from "./RecentActivity";
 
 export default function FriendsPage() {
   const queryClient = useQueryClient();
@@ -51,6 +51,12 @@ export default function FriendsPage() {
 
   const friends = data?.friends ?? [];
 
+  // Dropdown state for each friend row
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+
+  // Close dropdown when clicking outside
+  const dropdownRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+
   return (
     <div className="likes-page">
       <div className="page-header">
@@ -59,18 +65,18 @@ export default function FriendsPage() {
         </div>
       </div>
       <div className="page-content">
-        <ul className="recent-list large">
+        <ul className="recent-list large friends-list">
           <li className="friend-header-row">
-            <span className="friend-header friend-header-avatar">Picture</span>
+            <span className="friend-header friend-header-avatar"></span>
             <span className="friend-header friend-header-username">
               Username
             </span>
-            <span className="friend-header friend-header-link">Stats</span>
-            <span className="friend-header friend-header-likes">Likes</span>
+            <span className="friend-header friend-header-link"></span>
+            <span className="friend-header friend-header-likes"># Likes</span>
             <span className="friend-header friend-header-lastplay">
               Last Play
             </span>
-            <span className="friend-header friend-header-actions">Actions</span>
+            <span className="friend-header friend-header-actions"></span>
           </li>
           {status === "pending" && (
             <div className="recent-loading">Loading…</div>
@@ -96,6 +102,7 @@ export default function FriendsPage() {
                 <li key={f.id} className="friend-row">
                   <div className="friend-cell friend-avatar-cell">{avatar}</div>
                   <div className="friend-cell friend-username-cell">
+                    {/* shrinkable */}
                     <Link
                       className="recent-user link friend-username"
                       to={`/user/${encodeURIComponent(f.username)}`}
@@ -128,121 +135,133 @@ export default function FriendsPage() {
                   </div>
                   <div className="friend-cell friend-likes-cell">
                     {f.status === "accepted" && (
-                      <span
-                        className="friend-likes"
-                        style={{ color: "#e74c3c", fontWeight: 500 }}
+                      <Link
+                        to={`/likes?user=${encodeURIComponent(f.username)}`}
+                        className="friend-likes-link"
+                        style={{
+                          color: "#e74c3c",
+                          fontWeight: 500,
+                          cursor: "pointer",
+                          textDecoration: "none",
+                        }}
                       >
-                        ❤️ {f.likes}
-                      </span>
+                        <span>❤️ {f.likes}</span>
+                      </Link>
                     )}
                   </div>
                   <div className="friend-cell friend-lastplay-cell">
+                    {/* growable */}
                     {f.status === "accepted" ? (
-                      <span
-                        className="friend-date"
-                        style={{ color: "#27ae60", fontWeight: 500 }}
-                      >
-                        {f.last_play
-                          ? formatLocalDateTime(f.last_play)
-                          : "Never"}
-                      </span>
+                      f.last_play ? (
+                        <RecentPlayItem
+                          item={f.last_play}
+                          source={"friends"}
+                          showUsername={false}
+                        />
+                      ) : (
+                        <span className="friend-date muted">Never</span>
+                      )
                     ) : (
                       <span className="friend-date muted">—</span>
                     )}
                   </div>
                   <div className="friend-cell friend-actions-cell">
-                    {f.status === "accepted" && (
+                    <div
+                      className="friend-actions-dropdown-container"
+                      ref={(el) => (dropdownRefs.current[f.id] = el)}
+                    >
                       <button
-                        onClick={() => unfriendMutation.mutate(f.id)}
-                        disabled={unfriendMutation.isPending}
-                        className="friend-action-btn underline-btn no-bg"
-                        style={{
-                          background: "none",
-                          boxShadow: "none",
-                          border: "none",
-                          color: "#bbb",
-                          fontWeight: 500,
-                        }}
+                        className="friend-actions-dropdown-trigger"
+                        aria-label="Show actions"
+                        onClick={() =>
+                          setOpenDropdown(openDropdown === f.id ? null : f.id)
+                        }
                       >
-                        <span
-                          role="img"
-                          aria-label="Unfriend"
-                          style={{ marginRight: 4 }}
-                        >
-                          ❌
+                        <span style={{ fontSize: "1.5em", color: "#bbb" }}>
+                          ⋯
                         </span>
-                        <span className="underline">Unfriend</span>
                       </button>
-                    )}
-                    {f.status === "requested" && (
-                      <button
-                        onClick={() => declineMutation.mutate(f.username)}
-                        disabled={declineMutation.isPending}
-                        className="friend-action-btn underline-btn no-bg"
-                        style={{
-                          background: "none",
-                          boxShadow: "none",
-                          border: "none",
-                          color: "#bbb",
-                          fontWeight: 500,
-                        }}
-                      >
-                        <span
-                          role="img"
-                          aria-label="Cancel"
-                          style={{ marginRight: 4 }}
-                        >
-                          🚫
-                        </span>
-                        <span className="underline">Cancel request</span>
-                      </button>
-                    )}
-                    {f.status === "pending" && (
-                      <>
-                        <button
-                          onClick={() => acceptMutation.mutate(f.username)}
-                          disabled={acceptMutation.isPending}
-                          className="friend-action-btn underline-btn no-bg"
-                          style={{
-                            background: "none",
-                            boxShadow: "none",
-                            border: "none",
-                            color: "#bbb",
-                            fontWeight: 500,
-                          }}
-                        >
-                          <span
-                            role="img"
-                            aria-label="Accept"
-                            style={{ marginRight: 4 }}
-                          >
-                            ✅
-                          </span>
-                          <span className="underline">Accept</span>
-                        </button>
-                        <button
-                          onClick={() => declineMutation.mutate(f.username)}
-                          disabled={declineMutation.isPending}
-                          className="friend-action-btn underline-btn no-bg"
-                          style={{
-                            background: "none",
-                            boxShadow: "none",
-                            border: "none",
-                            color: "#bbb",
-                            fontWeight: 500,
-                          }}
-                        >
-                          <span
-                            role="img"
-                            aria-label="Decline"
-                            style={{ marginRight: 4 }}
-                          >
-                            🚫
-                          </span>
-                          <span className="underline">Decline</span>
-                        </button>
-                      </>
-                    )}
+                      {openDropdown === f.id && (
+                        <div className="friend-actions-dropdown">
+                          {f.status === "accepted" && (
+                            <button
+                              onClick={() => {
+                                unfriendMutation.mutate(f.id);
+                                setOpenDropdown(null);
+                              }}
+                              disabled={unfriendMutation.isPending}
+                              className="friend-action-btn dropdown-action-btn"
+                            >
+                              <span
+                                role="img"
+                                aria-label="Unfriend"
+                                style={{ marginRight: 4 }}
+                              >
+                                ❌
+                              </span>
+                              Unfriend
+                            </button>
+                          )}
+                          {f.status === "requested" && (
+                            <button
+                              onClick={() => {
+                                declineMutation.mutate(f.username);
+                                setOpenDropdown(null);
+                              }}
+                              disabled={declineMutation.isPending}
+                              className="friend-action-btn dropdown-action-btn"
+                            >
+                              <span
+                                role="img"
+                                aria-label="Cancel"
+                                style={{ marginRight: 4 }}
+                              >
+                                🚫
+                              </span>
+                              Cancel request
+                            </button>
+                          )}
+                          {f.status === "pending" && (
+                            <>
+                              <button
+                                onClick={() => {
+                                  acceptMutation.mutate(f.username);
+                                  setOpenDropdown(null);
+                                }}
+                                disabled={acceptMutation.isPending}
+                                className="friend-action-btn dropdown-action-btn"
+                              >
+                                <span
+                                  role="img"
+                                  aria-label="Accept"
+                                  style={{ marginRight: 4 }}
+                                >
+                                  ✅
+                                </span>
+                                Accept
+                              </button>
+                              <button
+                                onClick={() => {
+                                  declineMutation.mutate(f.username);
+                                  setOpenDropdown(null);
+                                }}
+                                disabled={declineMutation.isPending}
+                                className="friend-action-btn dropdown-action-btn"
+                              >
+                                <span
+                                  role="img"
+                                  aria-label="Decline"
+                                  style={{ marginRight: 4 }}
+                                >
+                                  🚫
+                                </span>
+                                Decline
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </li>
               );

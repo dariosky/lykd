@@ -11,10 +11,12 @@ export function RecentPlayItem({
   item,
   userLinkBase = "/recent",
   source = "recent",
+  showUsername = true,
 }: {
   item: RecentItem;
   userLinkBase?: string;
-  source?: "recent" | "likes" | "profile";
+  source?: "recent" | "likes" | "profile" | "friends";
+  showUsername?: boolean;
 }) {
   const time = formatLocalDateTime(item.date);
   const albumPic = item.track.album?.picture ?? null;
@@ -138,14 +140,19 @@ export function RecentPlayItem({
             </span>
           )}
         </div>
+
         <div className="recent-meta">
-          <Link
-            to={`${userLinkBase}?user=${encodeURIComponent(userIdent)}`}
-            className="recent-user link"
-          >
-            {userDisplay}
-          </Link>
-          <span className="recent-dot">•</span>
+          {showUsername && (
+            <>
+              <Link
+                to={`${userLinkBase}?user=${encodeURIComponent(userIdent)}`}
+                className="recent-user link"
+              >
+                {userDisplay}
+              </Link>
+              <span className="recent-dot">•</span>
+            </>
+          )}
           <span className="recent-time">{time}</span>
         </div>
       </div>
@@ -180,10 +187,12 @@ export function RecentActivityWidget({
   includeMe,
   filterUser,
   className,
+  showUsername = true,
 }: {
   includeMe: boolean;
   filterUser?: string | null;
   className?: string;
+  showUsername?: boolean;
 }) {
   const {
     data,
@@ -244,6 +253,7 @@ export function RecentActivityWidget({
               item={it}
               userLinkBase="/recent"
               source="recent"
+              showUsername={showUsername}
             />
           ))}
       </ul>
