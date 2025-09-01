@@ -297,7 +297,9 @@ async def list_friends_and_pending(
                 "requested" if row.requested_by_id == user.id else "pending"
             )
         elif row.status == FriendshipStatus.accepted and row.last_play:
-            last_play = Play(user_id=row.id, track_id=row.last_play_track_id)
+            last_play = Play(
+                user_id=row.id, track_id=row.last_play_track_id, date=row.last_play
+            )
             enriched_tracks = cache.enrich_tracks(
                 [last_play], "date", User(id=row.id), session
             )
