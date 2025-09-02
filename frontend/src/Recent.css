@@ -21,7 +21,6 @@
   text-decoration: underline transparent;
   transition: text-decoration-color 0.15s ease;
 }
-
 .recent-title-click:hover {
   text-decoration-color: rgba(255, 255, 255, 0.7);
 }
@@ -193,7 +192,6 @@
   color: #fff;
   cursor: pointer; /* label clickable */
 }
-
 .recent-menu-item input,
 .recent-menu-item span {
   cursor: pointer; /* pointer on checkbox and text when enabled */
@@ -203,7 +201,6 @@
 .recent-menu-item input:disabled {
   cursor: not-allowed;
 }
-
 .recent-menu-item input:disabled + span {
   color: #9aa;
   opacity: 0.7;
@@ -217,7 +214,6 @@
   color: #fff;
   padding: 2rem;
 }
-
 .likes-page {
   min-height: 100vh;
   background: #0a0a0a;
@@ -313,11 +309,9 @@
 .user-pill span {
   display: none;
 }
-
 .user-pill {
   position: relative;
 }
-
 .user-pill:hover::after {
   content: attr(data-name);
   position: absolute;
@@ -357,7 +351,6 @@
   text-decoration: underline transparent;
   transition: text-decoration-color 0.15s ease;
 }
-
 .link:hover {
   text-decoration-color: rgba(255, 255, 255, 0.6);
 }
@@ -392,17 +385,14 @@
     opacity 0.2s ease,
     transform 0.1s ease;
 }
-
 .recent-item:hover .recent-like-btn,
 .recent-like-btn:focus,
 .recent-like-btn:focus-visible {
   opacity: 1;
 }
-
 .recent-like-btn.liked {
   opacity: 1; /* always visible if liked */
 }
-
 .recent-like-btn:active {
   transform: scale(0.95);
 }
@@ -425,7 +415,6 @@
   padding: 0.5rem 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
-
 .friend-row {
   display: grid;
   grid-template-columns: 60px 1.5fr 1fr 1fr 1.5fr 2fr;
@@ -433,14 +422,12 @@
   min-height: 60px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
-
 .friend-cell {
   display: flex;
   align-items: center;
   min-width: 0;
   padding: 0.25rem 0.5rem;
 }
-
 .friend-avatar {
   width: 48px;
   height: 48px;
@@ -452,7 +439,6 @@
   align-items: center;
   display: flex;
 }
-
 .friend-username {
   font-weight: 600;
   color: #bbb;
@@ -462,7 +448,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
 .friend-stats-link {
   color: #fff;
   text-decoration: none;
@@ -472,17 +457,14 @@
     color 0.15s,
     text-decoration 0.15s;
 }
-
 .friend-stats-link:hover {
   color: #4fa3ff;
   text-decoration: underline;
 }
-
 .friend-actions-cell {
   justify-content: flex-end;
   gap: 0.5rem;
 }
-
 .underline-btn .underline {
   text-decoration: none;
   font-size: 0.95rem;
@@ -492,44 +474,36 @@
     color 0.15s,
     text-decoration 0.15s;
 }
-
 .underline-btn:hover .underline {
   color: #fff;
   text-decoration: underline;
 }
-
 .friend-likes {
   font-size: 1.1rem;
   font-weight: 500;
   color: #e74c3c;
 }
-
 .friend-date {
   font-size: 0.95rem;
   color: #27ae60;
   font-weight: 500;
 }
-
 .friend-header {
   padding: 0 0.5rem;
   font-size: 0.95rem;
   color: #bbb;
 }
-
 .friend-header-actions {
   text-align: right;
 }
-
 .friend-row:last-child {
   border-bottom: none;
 }
-
 .friend-likes-link {
   cursor: pointer;
   text-decoration: none;
   transition: text-decoration 0.15s;
 }
-
 .friend-likes-link:hover {
   text-decoration: underline;
 }

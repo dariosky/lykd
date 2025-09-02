@@ -6,6 +6,7 @@ from models import User
 from models.common import get_session
 from routes.deps import current_user
 from services import Spotify
+from services.cache import cache
 from services.spotify import get_spotify_client
 
 router = APIRouter()
@@ -153,3 +154,13 @@ async def spotify_transfer(
         return {"status": "ok"}
     except HTTPException as e:
         raise e
+
+
+@router.get("/track/{track_id}/like")
+async def get_track_like(
+    track_id: str,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_session),
+):
+    user_likes = cache.get_likes(user, db)
+    return {"liked": track_id in user_likes}

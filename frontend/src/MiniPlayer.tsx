@@ -30,6 +30,7 @@ export function MiniPlayer() {
   const [flash, setFlash] = React.useState<null | "play" | "pause" | "next">(
     null,
   );
+  const [liked, setLiked] = React.useState<boolean>(false);
   const flashOnce = (kind: "play" | "pause" | "next") => {
     setFlash(kind);
     window.setTimeout(() => setFlash(null), 200);
@@ -152,6 +153,21 @@ export function MiniPlayer() {
     };
   }, [fetchStateIfLoggedIn]);
 
+  // Fetch like status for current track
+  React.useEffect(() => {
+    const fetchLike = async () => {
+      if (state.item?.id) {
+        try {
+          const resp = await apiService.getTrackLike(state.item.id);
+          setLiked(Boolean(resp?.liked));
+        } catch {
+          setLiked(false);
+        }
+      }
+    };
+    fetchLike();
+  }, [state.item?.id]);
+
   const onTogglePlay = async () => {
     try {
       if (state.isPlaying) {
@@ -200,6 +216,19 @@ export function MiniPlayer() {
       setTimeout(fetchStateIfLoggedIn, 800);
     } catch (e: any) {
       setError(e?.message || "Failed to skip");
+    }
+  };
+
+  const onLikeClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!state.item?.id) return;
+    const prev = liked;
+    const next = !prev;
+    setLiked(next);
+    try {
+      await apiService.setLike(state.item.id, next);
+    } catch {
+      setLiked(prev);
     }
   };
 
@@ -265,6 +294,29 @@ export function MiniPlayer() {
             title="Next"
           >
             »
+          </button>
+          <button
+            className={`mp-btn mp-like-btn${liked ? " liked" : ""}`}
+            aria-label={liked ? "Unlike" : "Like"}
+            title={liked ? "Unlike" : "Like"}
+            aria-pressed={liked}
+            onClick={onLikeClick}
+          >
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              role="img"
+              aria-hidden="true"
+            >
+              <path
+                d="M12 21s-6.716-4.364-9.293-8.05C.813 10.27 1.135 7.3 3.05 5.636 4.964 3.97 7.77 4.22 9.5 6c.56.57 1.03 1.23 1.5 1.94.47-.71.94-1.37 1.5-1.94 1.73-1.78 4.536-2.03 6.45-.364 1.915 1.664 2.237 4.634.343 7.314C18.716 16.636 12 21 12 21z"
+                fill={liked ? "#ff4d6d" : "transparent"}
+                stroke="#ff4d6d"
+                strokeWidth="2"
+                strokeLinejoin="round"
+              />
+            </svg>
           </button>
         </div>
       </>

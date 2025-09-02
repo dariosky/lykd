@@ -659,6 +659,17 @@ export const apiService = {
     return response.json();
   },
 
+  // Get like status for a track
+  getTrackLike: async (trackId: string): Promise<{ liked: boolean }> => {
+    const response = await fetch(
+      `/api/track/${encodeURIComponent(trackId)}/like`,
+      { credentials: "include" },
+    );
+    if (response.status === 401) return { liked: false };
+    if (!response.ok) throw new Error(await getErrorMessage(response));
+    return response.json();
+  },
+
   // Get Spotify stats for current user
   getSpotifyStats: async (): Promise<SpotifyStats> => {
     const response = await fetch("/api/spotify/stats", {
