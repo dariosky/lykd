@@ -357,6 +357,15 @@ export const apiService = {
     if (!response.ok) throw new Error(await getErrorMessage(response));
     return response.json();
   },
+  // List available playback devices
+  getDevices: async (): Promise<{ devices: SpotifyDevice[] }> => {
+    const response = await fetch("/api/spotify/devices", {
+      credentials: "include",
+    });
+    if (response.status === 401) return { devices: [] };
+    if (!response.ok) throw new Error(await getErrorMessage(response));
+    return response.json();
+  },
   transferPlayback: async (
     deviceId: string,
     play: boolean = true,
@@ -751,3 +760,12 @@ export const queryKeys = {
   ignored: ["ignore", "list"] as const,
   reports: ["admin", "reports"] as const,
 };
+
+export interface SpotifyDevice {
+  id: string;
+  name: string;
+  type?: string;
+  is_active?: boolean;
+  is_restricted?: boolean;
+  volume_percent?: number | null;
+}

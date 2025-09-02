@@ -487,7 +487,7 @@ class Spotify:
         return None
 
     async def transfer_playback(
-        self, *, user: User, db_session: Session, device_id: str, play: bool = True
+        self, *, user: User, db_session: Session, device_id: str, play: bool = False
     ) -> None:
         url = "https://api.spotify.com/v1/me/player"
         payload = {"device_ids": [device_id], "play": play}

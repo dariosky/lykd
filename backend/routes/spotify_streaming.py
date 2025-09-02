@@ -164,3 +164,24 @@ async def get_track_like(
 ):
     user_likes = cache.get_likes(user, db)
     return {"liked": track_id in user_likes}
+
+
+@router.get("/spotify/devices")
+async def spotify_devices(
+    user: User = Depends(current_user),
+    spotify: Spotify = Depends(get_spotify_client),
+    db: Session = Depends(get_session),
+):
+    try:
+        resp = await spotify.request(
+            "GET",
+            user=user,
+            db_session=db,
+            url="https://api.spotify.com/v1/me/player/devices",
+        )
+        data = resp.json()
+        return {"devices": data.get("devices", [])}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

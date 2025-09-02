@@ -73,7 +73,7 @@ export function RecentPlayItem({
       try {
         // Create browser device and transfer playback
         const deviceId = await ensureWebPlaybackDevice();
-        await apiService.transferPlayback(deviceId, true);
+        await apiService.transferPlayback(deviceId, false);
         // Wait briefly to ensure device is ready
         await new Promise((resolve) => setTimeout(resolve, 500));
         const resp = await doPlay();

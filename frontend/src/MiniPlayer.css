@@ -73,6 +73,12 @@
   color: #bbb;
   font-size: 0.9rem;
   white-space: nowrap;
+  overflow: visible; /* allow dropdown to overflow */
+}
+
+/* Optional: keep long artist text truncated without clipping dropdown */
+.mp-artists {
+  max-width: 40vw;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -136,4 +142,71 @@
   margin-left: 6px;
   color: #ff8080;
   cursor: help;
+}
+
+/* Device dropdown */
+.mp-device-wrap {
+  position: relative;
+}
+.mp-device-btn {
+  border: none;
+  background: transparent;
+  color: #bbb;
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 6px;
+}
+.mp-device-ico {
+  margin-right: 6px;
+}
+.mp-device-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+.mp-devices-dropdown {
+  position: absolute;
+  bottom: 120%; /* open upward above the device name */
+  top: auto;
+  right: 0;
+  min-width: 220px;
+  max-width: 60vw;
+  max-height: 50vh;
+  overflow-y: auto;
+  background: rgba(25, 25, 25, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  padding: 6px;
+  z-index: 1001;
+}
+.mp-device-item {
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: #fff;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.mp-device-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.mp-device-item.active {
+  background: rgba(29, 185, 84, 0.15);
+  border: 1px solid rgba(29, 185, 84, 0.4);
+}
+.mp-device-item.strong {
+  font-weight: 600;
+}
+.mp-device-sep {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.12);
+  margin: 6px 0;
+}
+.mp-device-loading,
+.mp-device-empty {
+  color: #bbb;
+  padding: 6px 8px;
 }

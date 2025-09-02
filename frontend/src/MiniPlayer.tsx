@@ -1,5 +1,5 @@
 import React from "react";
-import { apiService } from "./api";
+import { apiService, type SpotifyDevice } from "./api";
 import "./MiniPlayer.css";
 import { on } from "./playbackBus";
 import { ensureWebPlaybackDevice } from "./spotifyWeb";
@@ -20,6 +20,7 @@ export function MiniPlayer() {
     isPlaying: boolean;
     progressMs: number;
     deviceName?: string | null;
+    deviceType?: string | null;
     item: PlaybackItem | null;
   }>({ isPlaying: false, progressMs: 0, deviceName: null, item: null });
 
@@ -31,6 +32,10 @@ export function MiniPlayer() {
     null,
   );
   const [liked, setLiked] = React.useState<boolean>(false);
+  const [showDevices, setShowDevices] = React.useState<boolean>(false);
+  const [devices, setDevices] = React.useState<SpotifyDevice[]>([]);
+  const [loadingDevices, setLoadingDevices] = React.useState<boolean>(false);
+  const devicesRef = React.useRef<HTMLDivElement | null>(null);
   const flashOnce = (kind: "play" | "pause" | "next") => {
     setFlash(kind);
     window.setTimeout(() => setFlash(null), 200);
@@ -69,6 +74,7 @@ export function MiniPlayer() {
         isPlaying: Boolean(s.is_playing),
         progressMs: s.progress_ms ?? 0,
         deviceName: s.device?.name ?? null,
+        deviceType: s.device?.type ?? null,
         item: playbackItem,
       });
 
@@ -153,6 +159,26 @@ export function MiniPlayer() {
     };
   }, [fetchStateIfLoggedIn]);
 
+  // Close devices dropdown on outside click or Escape
+  React.useEffect(() => {
+    if (!showDevices) return;
+    const onClick = (e: MouseEvent) => {
+      if (!devicesRef.current) return;
+      if (!devicesRef.current.contains(e.target as Node)) {
+        setShowDevices(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowDevices(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [showDevices]);
+
   // Fetch like status for current track
   React.useEffect(() => {
     const fetchLike = async () => {
@@ -168,6 +194,47 @@ export function MiniPlayer() {
     fetchLike();
   }, [state.item?.id]);
 
+  const loadDevices = React.useCallback(async () => {
+    try {
+      setLoadingDevices(true);
+      const resp = await apiService.getDevices();
+      setDevices(resp.devices || []);
+    } catch (e) {
+      setDevices([]);
+    } finally {
+      setLoadingDevices(false);
+    }
+  }, []);
+
+  const onDeviceNameClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!showDevices) {
+      await loadDevices();
+    }
+    setShowDevices((v) => !v);
+  };
+
+  const onSelectDevice = async (deviceId: string) => {
+    try {
+      await apiService.transferPlayback(deviceId, true);
+      setShowDevices(false);
+      setTimeout(fetchStateIfLoggedIn, 500);
+    } catch (e: any) {
+      setError(e?.message || "Failed to transfer playback");
+    }
+  };
+
+  const onSelectLykd = async () => {
+    try {
+      const deviceId = await ensureWebPlaybackDevice();
+      await apiService.transferPlayback(deviceId, true);
+      setShowDevices(false);
+      setTimeout(fetchStateIfLoggedIn, 500);
+    } catch (e: any) {
+      setError(e?.message || "Failed to transfer to Lykd");
+    }
+  };
+
   const onTogglePlay = async () => {
     try {
       if (state.isPlaying) {
@@ -181,7 +248,7 @@ export function MiniPlayer() {
           if (/no active device/i.test(msg)) {
             try {
               const deviceId = await ensureWebPlaybackDevice();
-              await apiService.transferPlayback(deviceId, true);
+              await apiService.transferPlayback(deviceId, false);
               await apiService.resumePlayback();
             } catch (ie) {
               throw ie;
@@ -232,6 +299,29 @@ export function MiniPlayer() {
     }
   };
 
+  const deviceIcon = (t?: string | null) => {
+    switch ((t || "").toLowerCase()) {
+      case "computer":
+        return "🖥️";
+      case "smartphone":
+        return "📱";
+      case "speaker":
+        return "🔊";
+      case "tv":
+        return "📺";
+      case "cast":
+      case "avr":
+      case "stb":
+        return "📡";
+      case "gameconsole":
+        return "🎮";
+      case "automobile":
+        return "🚗";
+      default:
+        return "🎧";
+    }
+  };
+
   const item = state.item;
   if (!item) return null; // hide player when no active playback
 
@@ -258,8 +348,53 @@ export function MiniPlayer() {
             <span className="mp-artists">{item.artists.join(", ")}</span>
             {state.deviceName ? <span className="mp-dot">•</span> : null}
             {state.deviceName ? (
-              <span className="mp-device" title="Active device">
-                {state.deviceName}
+              <span className="mp-device-wrap" ref={devicesRef}>
+                <button
+                  className="mp-device-btn"
+                  onClick={onDeviceNameClick}
+                  title="Choose device"
+                  aria-haspopup="menu"
+                  aria-expanded={showDevices}
+                >
+                  <span className="mp-device-ico" aria-hidden>
+                    {deviceIcon(state.deviceType)}
+                  </span>
+                  <span className="mp-device-name">{state.deviceName}</span>
+                </button>
+                {showDevices && (
+                  <div className="mp-devices-dropdown" role="menu">
+                    <button
+                      className="mp-device-item strong"
+                      onClick={onSelectLykd}
+                      role="menuitem"
+                    >
+                      ▶ Play in Lykd
+                    </button>
+                    <div className="mp-device-sep" />
+                    {loadingDevices && (
+                      <div className="mp-device-loading">Loading devices…</div>
+                    )}
+                    {!loadingDevices && devices.length === 0 && (
+                      <div className="mp-device-empty">No devices found</div>
+                    )}
+                    {!loadingDevices &&
+                      devices.map((d) => (
+                        <button
+                          key={d.id}
+                          className={`mp-device-item${d.is_active ? " active" : ""}`}
+                          onClick={() => onSelectDevice(d.id)}
+                          role="menuitem"
+                          title={d.type || "Device"}
+                        >
+                          <span className="mp-device-ico" aria-hidden>
+                            {deviceIcon(d.type)}
+                          </span>
+                          <span className="mp-device-name">{d.name}</span>
+                          {d.is_active ? " (active)" : ""}
+                        </button>
+                      ))}
+                  </div>
+                )}
               </span>
             ) : null}
           </div>
