@@ -38,10 +38,18 @@ class TestPublicRouteIntegration:
 
         # Create two tracks
         track1 = Track(
-            id="track_1", title="Normal Song", duration=200000, album_id=album.id
+            id="track_1",
+            title="Normal Song",
+            duration=200000,
+            album_id=album.id,
+            uid="uid_1",
         )
         track2 = Track(
-            id="track_2", title="Ignored Song", duration=200000, album_id=album.id
+            id="track_2",
+            title="Ignored Song",
+            duration=200000,
+            album_id=album.id,
+            uid="uid_2",
         )
 
         track_artist1 = TrackArtist(track_id=track1.id, artist_id=artist.id)

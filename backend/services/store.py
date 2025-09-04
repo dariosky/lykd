@@ -1,3 +1,5 @@
+import hashlib
+
 from sqlmodel import Session, delete, select, update
 
 from models.auth import User
@@ -17,6 +19,11 @@ import logging
 from utils.dates import parse_date
 
 logger = logging.getLogger("lykd.store")
+
+
+def get_track_hash(t: Track) -> str:
+    hasher = hashlib.md5(f"{t.title}-{t.duration}".encode())
+    return hasher.hexdigest()
 
 
 def store_track(track, db_session: Session):
@@ -93,13 +100,14 @@ def store_track(track, db_session: Session):
                 logger.error(f"Error storing album artist: {e} - {artist_data}")
 
     # Create track instance and merge (upsert)
+
     t = Track(
         id=track["id"],
         title=track["name"],
         duration=track["duration_ms"],
         album_id=album.id if album else None,
-        uri=track["uri"],
     )
+    t.uid = get_track_hash(t)
     t = db_session.merge(t)
 
     # Handle track artists relationships

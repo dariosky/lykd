@@ -20,7 +20,9 @@ def create_track_with_artists(
             release_date_precision=None,
         )
         session.add(album)
-    track = Track(id=track_id, title=title, duration=123, album_id=album_id)
+    track = Track(
+        id=track_id, title=title, duration=123, album_id=album_id, uid=track_id
+    )
     session.add(track)
     for aid, aname in artists:
         a = session.get(Artist, aid) or Artist(
@@ -58,8 +60,8 @@ def test_ignore_get_with_aggregation(client, test_session, test_user, auth_overr
     )
 
     # Mark ignored
-    test_session.add(IgnoredTrack(user_id=test_user.id, track_id="t1"))
-    test_session.add(IgnoredTrack(user_id=test_user.id, track_id="t2"))
+    test_session.add(IgnoredTrack(user_id=test_user.id, track_id="t1", uid="t1"))
+    test_session.add(IgnoredTrack(user_id=test_user.id, track_id="t2", uid="t2"))
     # Also ignore an artist
     test_session.add(IgnoredArtist(user_id=test_user.id, artist_id="a2"))
     test_session.commit()

@@ -3,9 +3,15 @@ from datetime import timezone
 from enum import Enum
 
 from models.common import CamelModel
-from models.types import UtcAwareDateTime
-from sqlmodel import Field, SQLModel, Relationship
-from sqlalchemy import Index, Column, func
+from sqlalchemy import Index
+from sqlmodel import Field, Relationship, SQLModel
+
+from .ignored import (  # noqa
+    GlobalIgnoredArtist,
+    GlobalIgnoredTrack,
+    IgnoredArtist,
+    IgnoredTrack,
+)
 
 
 class Artist(SQLModel, CamelModel, table=True):
@@ -56,7 +62,7 @@ class Track(SQLModel, CamelModel, table=True):
 
     # Relationship to playlists through PlaylistTrack
     playlist_tracks: list["PlaylistTrack"] = Relationship(back_populates="track")
-    uri: str | None = None
+    uid: str | None = Field(default=None, index=True)
 
     __table_args__ = (Index("idx_tracks_album_id", "album_id"),)
 
@@ -92,6 +98,7 @@ class Like(SQLModel, CamelModel, table=True):
 
     user_id: str = Field(primary_key=True, foreign_key="users.id")
     track_id: str = Field(primary_key=True, foreign_key="tracks.id")
+    uid: str | None = Field(primary_key=True, foreign_key="tracks.id", default=None)
     date: datetime.datetime = Field(
         default_factory=lambda: datetime.datetime.now(timezone.utc)
     )
@@ -131,53 +138,3 @@ class Playlist(SQLModel, CamelModel, table=True):
     def tracks(self) -> list["Track"]:
         """Get all tracks in this playlist"""
         return [pt.track for pt in self.playlist_tracks]
-
-
-class IgnoredTrack(SQLModel, CamelModel, table=True):
-    __tablename__ = "ignored_tracks"
-
-    user_id: str = Field(primary_key=True, foreign_key="users.id")
-    track_id: str = Field(primary_key=True, foreign_key="tracks.id")
-    ts: datetime.datetime | None = Field(
-        default=datetime.datetime.now(timezone.utc),
-        sa_column=Column(UtcAwareDateTime(), onupdate=func.now(), nullable=True),
-    )
-    reported: bool = Field(default=False)
-
-
-class IgnoredArtist(SQLModel, CamelModel, table=True):
-    __tablename__ = "ignored_artists"
-
-    user_id: str = Field(primary_key=True, foreign_key="users.id")
-    artist_id: str = Field(primary_key=True, foreign_key="artists.id")
-    ts: datetime.datetime | None = Field(
-        default=datetime.datetime.now(timezone.utc),
-        sa_column=Column(UtcAwareDateTime(), nullable=True),
-    )
-    reported: bool = Field(default=False)
-
-
-class GlobalIgnoredTrack(SQLModel, CamelModel, table=True):
-    __tablename__ = "global_ignored_tracks"
-
-    track_id: str = Field(primary_key=True, foreign_key="tracks.id")
-    approved_by: str | None = Field(default=None, foreign_key="users.id")
-    ts: datetime.datetime | None = Field(
-        default=datetime.datetime.now(timezone.utc),
-        sa_column=Column(UtcAwareDateTime(), nullable=True),
-    )
-
-    __table_args__ = (Index("idx_global_ignored_tracks_track", "track_id"),)
-
-
-class GlobalIgnoredArtist(SQLModel, CamelModel, table=True):
-    __tablename__ = "global_ignored_artists"
-
-    artist_id: str = Field(primary_key=True, foreign_key="artists.id")
-    approved_by: str | None = Field(default=None, foreign_key="users.id")
-    ts: datetime.datetime | None = Field(
-        default=datetime.datetime.now(timezone.utc),
-        sa_column=Column(UtcAwareDateTime(), onupdate=func.now(), nullable=True),
-    )
-
-    __table_args__ = (Index("idx_global_ignored_artists_artist", "artist_id"),)
