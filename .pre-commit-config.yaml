@@ -23,6 +23,12 @@ repos:
         language: system
         files: ^frontend/.*\.(js|jsx|ts|tsx|json|css|html)$
         pass_filenames: false
+      - id: frontend-lint
+        name: frontend lint
+        entry: bash -c 'cd frontend && npm run lint'
+        language: system
+        files: ^frontend/.*\.(js|jsx|ts|tsx)$
+        pass_filenames: false
       - id: backend-tests
         name: backend tests
         entry: bash -c 'cd backend && python -m pytest'

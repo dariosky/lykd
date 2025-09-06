@@ -43,7 +43,8 @@ async def get_one_liked_playlist(
 
     if not same_name_playlists:
         spotify_playlist = await spotify.playlist_create(
-            user,
+            user=user,
+            db_session=db_session,
             description=target_description,
             name=target_name,
             public=target_public,
