@@ -14,7 +14,7 @@ export default function LikesPage() {
   const [searchText, setSearchText] = React.useState(qParam);
   React.useEffect(() => {
     if (qParam !== searchText) setSearchText(qParam);
-  }, [qParam]);
+  }, [qParam, searchText]);
 
   const filterUser = userParam;
   const excludeMe = filterUser ? false : excludeParam;

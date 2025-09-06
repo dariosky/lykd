@@ -72,9 +72,10 @@ export default function PublicProfilePage() {
     mutationFn: () => apiService.sendFriendRequest(username!),
     onSuccess: () => {
       // Optimistically reflect new status
-      queryClient.setQueryData(queryKeys.friendshipStatus(username!), {
-        status: "pending_outgoing",
-      } as any);
+      queryClient.setQueryData<FriendshipStatusResponse>(
+        queryKeys.friendshipStatus(username!),
+        { status: "pending_outgoing" },
+      );
       queryClient.invalidateQueries({
         queryKey: queryKeys.friendshipStatus(username!),
       });

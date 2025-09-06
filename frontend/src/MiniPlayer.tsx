@@ -1,5 +1,5 @@
 import React from "react";
-import { apiService, type SpotifyDevice } from "./api";
+import { apiService, type SpotifyDevice, type PlaybackState } from "./api";
 import "./MiniPlayer.css";
 import { on } from "./playbackBus";
 import { ensureWebPlaybackDevice } from "./spotifyWeb";
@@ -44,7 +44,7 @@ export function MiniPlayer() {
   const fetchState = React.useCallback(async () => {
     try {
       const resp = await apiService.getPlayback();
-      const s = resp.state as any | null;
+      const s = resp.state as PlaybackState | null;
       if (!s) {
         setState((prev) => ({
           ...prev,
@@ -246,13 +246,9 @@ export function MiniPlayer() {
         } catch (e: any) {
           const msg = e?.message || "";
           if (/no active device/i.test(msg)) {
-            try {
-              const deviceId = await ensureWebPlaybackDevice();
-              await apiService.transferPlayback(deviceId, false);
-              await apiService.resumePlayback();
-            } catch (ie) {
-              throw ie;
-            }
+            const deviceId = await ensureWebPlaybackDevice();
+            await apiService.transferPlayback(deviceId, false);
+            await apiService.resumePlayback();
           } else {
             throw e;
           }

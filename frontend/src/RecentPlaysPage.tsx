@@ -16,7 +16,7 @@ export default function RecentPlaysPage() {
   React.useEffect(() => {
     // Keep local state in sync if URL changes externally
     if (qParam !== searchText) setSearchText(qParam);
-  }, [qParam]);
+  }, [qParam, searchText]);
 
   const filterUser = userParam;
   const excludeMe = filterUser ? false : excludeParam;

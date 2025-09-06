@@ -32,7 +32,6 @@ export default class ErrorBoundary extends React.Component<
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     // Basic logging; replace with your telemetry if needed
-    // eslint-disable-next-line no-console
     console.error("ErrorBoundary caught an error:", error, errorInfo);
   }
 

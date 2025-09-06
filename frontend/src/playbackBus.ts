@@ -26,9 +26,9 @@ export function on<K extends keyof PlaybackEventMap>(
   handler: Handler<PlaybackEventMap[K]>,
 ): () => void {
   const list = handlers[evt];
-  list.push(handler as any);
+  list.push(handler);
   return () => {
-    const idx = list.indexOf(handler as any);
+    const idx = list.indexOf(handler);
     if (idx >= 0) list.splice(idx, 1);
   };
 }
@@ -37,5 +37,5 @@ export function emit<K extends keyof PlaybackEventMap>(
   evt: K,
   payload: PlaybackEventMap[K],
 ) {
-  handlers[evt].forEach((h) => h(payload as any));
+  handlers[evt].forEach((h) => h(payload));
 }

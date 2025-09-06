@@ -213,6 +213,20 @@ export class NotFoundError extends Error {
   }
 }
 
+// Playback state returned by /api/spotify/playback
+export interface PlaybackState {
+  is_playing: boolean;
+  progress_ms?: number | null;
+  device?: { name?: string | null; type?: string | null } | null;
+  item?: {
+    id: string;
+    name: string;
+    artists?: { name: string }[];
+    album?: { images?: { url?: string }[] };
+    duration_ms?: number;
+  } | null;
+}
+
 const getErrorMessage = async (response: Response): Promise<string> => {
   let text: string;
   try {
@@ -316,7 +330,7 @@ export const apiService = {
   },
 
   // Playback state and controls
-  getPlayback: async (): Promise<{ state: any | null }> => {
+  getPlayback: async (): Promise<{ state: PlaybackState | null }> => {
     const response = await fetch("/api/spotify/playback", {
       credentials: "include",
     });

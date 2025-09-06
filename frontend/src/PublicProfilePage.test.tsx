@@ -28,14 +28,16 @@ function renderWithProviders(ui: React.ReactNode, initialEntries: string[]) {
 
 // Mock fetch
 const mockFetch = vi.fn();
-(globalThis as any).fetch = mockFetch;
 
 describe("PublicProfilePage", () => {
   beforeEach(() => {
-    mockFetch.mockClear();
+    mockFetch.mockReset();
+    // Provide fetch mock via Vitest helper (avoids unsafe casts triggering lint errors)
+    vi.stubGlobal("fetch", mockFetch);
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     vi.useRealTimers();
   });
 
